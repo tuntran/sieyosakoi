@@ -1,0 +1,191 @@
+---
+import { env } from 'cloudflare:workers';
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import { getOrderById, updateOrderStatus, updatePaymentStatus } from '../../../lib/db';
+
+const db = env.DB;
+const { id } = Astro.params;
+if (!id) return Astro.redirect('/admin/orders');
+
+// POST actions
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const action = form.get('action')?.toString();
+  const order = await getOrderById(db, id);
+  if (!order) return Astro.redirect('/admin/orders');
+
+  if (action === 'verify_payment') {
+    await updatePaymentStatus(db, id, 'verified');
+  } else if (action === 'confirm_order') {
+    if (order.payment_status !== 'verified') {
+      return Astro.redirect(`/admin/orders/${id}?error=payment_not_verified`);
+    }
+    await updateOrderStatus(db, id, 'confirmed');
+  } else if (action === 'update_status') {
+    const newStatus = form.get('order_status')?.toString();
+    if (newStatus) await updateOrderStatus(db, id, newStatus);
+  } else if (action === 'cancel') {
+    await updateOrderStatus(db, id, 'cancelled');
+  }
+  return Astro.redirect(`/admin/orders/${id}`);
+}
+
+const order = await getOrderById(db, id);
+if (!order) return Astro.redirect('/admin/orders');
+
+const errorParam = Astro.url.searchParams.get('error');
+
+function fmtVnd(n: number) { return n.toLocaleString('vi-VN') + 'đ'; }
+function fmtDate(ts: number) {
+  return new Date(ts * 1000).toLocaleString('vi-VN', {
+    timeZone: 'Asia/Ho_Chi_Minh',
+    weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  });
+}
+
+const deliveryLabels: Record<string, string> = {
+  pickup_practice: 'Nhận tại buổi tập (thành viên SIE)',
+  pickup_festival_sat: 'Liên hoan Yosakoi — Thứ 7 (25/4)',
+  pickup_festival_sun: 'Liên hoan Yosakoi — Chủ nhật (26/4)',
+  ship_after_27apr: 'Giao hàng sau 27/4',
+};
+const payLabels: Record<string, string> = { awaiting: 'Chờ CK', verified: 'Đã CK', refunded: 'Hoàn tiền' };
+const ordLabels: Record<string, string> = { pending: 'Chờ xử lý', confirmed: 'Xác nhận', shipping: 'Đang giao', done: 'Xong', cancelled: 'Đã huỷ' };
+---
+
+<AdminLayout title={`Đơn ${order.id}`} currentPage="orders">
+  <div style="margin-bottom:12px">
+    <a href="/admin/orders" class="btn btn-outline btn-sm">← Danh sách đơn</a>
+  </div>
+
+  {errorParam === 'payment_not_verified' && (
+    <div class="alert alert-error">Chỉ có thể xác nhận đơn khi thanh toán đã được duyệt.</div>
+  )}
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+    <!-- Order info -->
+    <div class="card">
+      <div class="card-header"><span class="card-title">📋 Thông tin đơn</span></div>
+      <div class="card-body">
+        <div class="order-info-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+          <div class="order-info-item">
+            <span class="order-info-label">Mã đơn</span>
+            <span class="order-info-value" style="font-family:monospace">{order.id}</span>
+          </div>
+          <div class="order-info-item">
+            <span class="order-info-label">Ngày đặt</span>
+            <span class="order-info-value" style="font-size:0.8rem">{fmtDate(order.created_at)}</span>
+          </div>
+          <div class="order-info-item">
+            <span class="order-info-label">Khách hàng</span>
+            <span class="order-info-value">{order.customer_name}</span>
+          </div>
+          <div class="order-info-item">
+            <span class="order-info-label">Số điện thoại</span>
+            <span class="order-info-value">{order.phone}</span>
+          </div>
+          <div class="order-info-item" style="grid-column:1/-1">
+            <span class="order-info-label">Nhận hàng</span>
+            <span class="order-info-value">{deliveryLabels[order.delivery_method] ?? order.delivery_method}</span>
+          </div>
+          {order.address && (
+            <div class="order-info-item" style="grid-column:1/-1">
+              <span class="order-info-label">Địa chỉ</span>
+              <span class="order-info-value">{order.address}</span>
+            </div>
+          )}
+          {order.notes && (
+            <div class="order-info-item" style="grid-column:1/-1">
+              <span class="order-info-label">Ghi chú</span>
+              <span class="order-info-value" style="font-style:italic;color:var(--text-muted)">{order.notes}</span>
+            </div>
+          )}
+        </div>
+
+        <!-- Items -->
+        <div style="border-top:1px dashed var(--border);padding-top:12px">
+          {order.items.map(item => (
+            <div style="display:flex;justify-content:space-between;font-size:0.875rem;padding:4px 0;border-bottom:1px solid var(--border)">
+              <div>
+                <strong>{item.name}</strong>
+                {item.color && <span style="color:var(--text-muted)"> · {item.color}</span>}
+                {item.size && <span style="color:var(--text-muted)"> · {item.size}</span>}
+                <span style="color:var(--text-muted)"> × {item.qty}</span>
+              </div>
+              <div style="font-weight:700;white-space:nowrap;margin-left:12px">{fmtVnd(item.unit_price * item.qty)}</div>
+            </div>
+          ))}
+          <div style="margin-top:8px;font-size:0.875rem;color:var(--text-muted);text-align:right">
+            Tạm tính: {fmtVnd(order.subtotal)}
+            {order.shipping_fee > 0 && ` · Ship: ${fmtVnd(order.shipping_fee)}`}
+          </div>
+          <div style="font-size:1.1rem;font-weight:700;color:var(--koi-red);text-align:right;margin-top:4px">
+            Tổng: {fmtVnd(order.total)}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div>
+      <!-- Payment status -->
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-header"><span class="card-title">💳 Thanh toán</span></div>
+        <div class="card-body">
+          <div style="margin-bottom:12px">
+            Trạng thái: <span class={`badge badge-${order.payment_status}`}>{payLabels[order.payment_status]}</span>
+          </div>
+          {order.payment_status === 'awaiting' && (
+            <form action={`/admin/orders/${order.id}`} method="POST">
+              <input type="hidden" name="action" value="verify_payment" />
+              <button type="submit" class="btn btn-success">✓ Xác nhận đã chuyển khoản</button>
+            </form>
+          )}
+          {order.payment_status === 'verified' && (
+            <div style="color:var(--success);font-size:0.875rem;font-weight:600">✓ Đã xác nhận chuyển khoản</div>
+          )}
+        </div>
+      </div>
+
+      <!-- Order status -->
+      <div class="card">
+        <div class="card-header"><span class="card-title">📦 Trạng thái đơn hàng</span></div>
+        <div class="card-body">
+          <div style="margin-bottom:12px">
+            Hiện tại: <span class={`badge badge-${order.order_status}`}>{ordLabels[order.order_status]}</span>
+          </div>
+
+          {order.order_status !== 'confirmed' && order.order_status !== 'cancelled' && (
+            <form action={`/admin/orders/${order.id}`} method="POST" style="margin-bottom:10px">
+              <input type="hidden" name="action" value="confirm_order" />
+              <button type="submit" class="btn btn-primary btn-sm"
+                disabled={order.payment_status !== 'verified'}
+                title={order.payment_status !== 'verified' ? 'Cần xác nhận CK trước' : ''}>
+                ✓ Xác nhận đơn
+              </button>
+            </form>
+          )}
+
+          <form action={`/admin/orders/${order.id}`} method="POST" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+            <input type="hidden" name="action" value="update_status" />
+            <select class="form-select" name="order_status" style="flex:1;min-width:120px">
+              {['pending','confirmed','shipping','done','cancelled'].map(s => (
+                <option value={s} selected={order.order_status === s}>{ordLabels[s]}</option>
+              ))}
+            </select>
+            <button type="submit" class="btn btn-outline btn-sm">Cập nhật</button>
+          </form>
+
+          {order.order_status !== 'cancelled' && (
+            <form action={`/admin/orders/${order.id}`} method="POST"
+              onsubmit="return confirm('Huỷ đơn này?')">
+              <input type="hidden" name="action" value="cancel" />
+              <button type="submit" class="btn btn-danger btn-sm">✕ Huỷ đơn</button>
+            </form>
+          )}
+        </div>
+      </div>
+    </div>
+  </div>
+</AdminLayout>

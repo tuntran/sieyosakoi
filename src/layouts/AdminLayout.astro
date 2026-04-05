@@ -1,0 +1,86 @@
+---
+import { env } from 'cloudflare:workers';
+import '../styles/admin.css';
+
+interface Props {
+  title: string;
+  currentPage?: string;
+}
+const { title, currentPage = '' } = Astro.props;
+
+const db = env.DB;
+// Get current open batch for sidebar display
+let batchName = '';
+try {
+  const { getOpenBatch } = await import('../lib/db');
+  const batch = await getOpenBatch(db);
+  batchName = batch?.name ?? '';
+} catch { /* no batch */ }
+
+const navLinks = [
+  { href: '/admin',          label: 'Dashboard',   icon: '📊', key: 'dashboard' },
+  { href: '/admin/orders',   label: 'Đơn hàng',    icon: '📋', key: 'orders' },
+  { href: '/admin/batches',  label: 'Đợt bán',     icon: '🗂️', key: 'batches' },
+  { href: '/admin/products', label: 'Sản phẩm',    icon: '🛍️', key: 'products' },
+  { href: '/admin/settings', label: 'Cài đặt',     icon: '⚙️', key: 'settings' },
+];
+---
+
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{title} — SIE Admin</title>
+</head>
+<body>
+<div class="admin-layout">
+
+  <!-- ── Sidebar ─────────────────────────────────── -->
+  <aside class="admin-sidebar">
+    <div class="sidebar-brand">
+      <div class="sidebar-brand-name">🎏 SIE Yosakoi</div>
+      <div class="sidebar-brand-sub">Admin Panel</div>
+    </div>
+    {batchName && (
+      <div class="sidebar-batch">
+        <div style="font-size:0.68rem;color:rgba(255,255,255,0.5);margin-bottom:2px">Đợt hiện tại</div>
+        <div class="sidebar-batch-name">{batchName}</div>
+      </div>
+    )}
+    <nav class="sidebar-nav">
+      {navLinks.map(link => (
+        <a
+          href={link.href}
+          class={`nav-item${currentPage === link.key ? ' active' : ''}`}
+        >
+          <span>{link.icon}</span>
+          {link.label}
+        </a>
+      ))}
+    </nav>
+    <div class="sidebar-footer">
+      <form action="/admin/logout" method="POST">
+        <button type="submit" class="btn btn-outline" style="width:100%;color:rgba(255,255,255,0.6);border-color:rgba(255,255,255,0.2);font-size:0.8rem;min-height:32px">
+          ⏏ Đăng xuất
+        </button>
+      </form>
+    </div>
+  </aside>
+
+  <!-- ── Main ─────────────────────────────────────── -->
+  <div class="admin-main">
+    <div class="admin-topbar">
+      <span class="topbar-title">{title}</span>
+      <div class="topbar-actions">
+        <a href="/" class="btn btn-outline btn-sm" target="_blank">🌐 Xem trang chủ</a>
+      </div>
+    </div>
+    <div class="admin-content">
+      <slot />
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

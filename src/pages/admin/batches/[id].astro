@@ -1,0 +1,82 @@
+---
+import { env } from 'cloudflare:workers';
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import { getBatches, getOrdersByBatch, getDashboardStats } from '../../../lib/db';
+
+const db = env.DB;
+const { id } = Astro.params;
+if (!id) return Astro.redirect('/admin/batches');
+
+const batches = await getBatches(db);
+const batch = batches.find(b => b.id === id);
+if (!batch) return Astro.redirect('/admin/batches');
+
+const stats = await getDashboardStats(db, batch.id);
+const orders = await getOrdersByBatch(db, { batch_id: batch.id, page: 1 });
+
+function fmtVnd(n: number) { return n.toLocaleString('vi-VN') + 'đ'; }
+function fmtDate(ts: number | null) {
+  if (!ts) return '—';
+  return new Date(ts * 1000).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+}
+const payLabels: Record<string, string> = { awaiting: 'Chờ CK', verified: 'Đã CK', refunded: 'Hoàn tiền' };
+const ordLabels: Record<string, string> = { pending: 'Chờ xử lý', confirmed: 'Xác nhận', shipping: 'Đang giao', done: 'Xong', cancelled: 'Đã huỷ' };
+const statusLabel: Record<string, string> = { open: 'Đang mở', closed: 'Đã đóng', draft: 'Nháp' };
+---
+
+<AdminLayout title={batch.name} currentPage="batches">
+  <div style="margin-bottom:12px">
+    <a href="/admin/batches" class="btn btn-outline btn-sm">← Danh sách đợt</a>
+  </div>
+
+  <!-- Batch info -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-header">
+      <span class="card-title">{batch.name}</span>
+      <span class={`badge badge-${batch.status}`}>{statusLabel[batch.status]}</span>
+    </div>
+    <div class="card-body">
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px">
+        <div><div style="font-size:0.72rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;font-weight:600">ID</div><div style="font-family:monospace;font-size:0.85rem">{batch.id}</div></div>
+        <div><div style="font-size:0.72rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;font-weight:600">Deadline</div><div>{fmtDate(batch.close_at)}</div></div>
+        <div><div style="font-size:0.72rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;font-weight:600">Tổng đơn</div><div style="font-weight:700;font-size:1.1rem">{stats.total_orders}</div></div>
+        <div><div style="font-size:0.72rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;font-weight:600">Doanh thu</div><div style="font-weight:700;font-size:1.1rem;color:var(--koi-red)">{fmtVnd(stats.total_revenue)}</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-grid" style="margin-bottom:16px">
+    <div class="stat-card accent-sky"><div class="stat-label">Tổng đơn</div><div class="stat-value">{stats.total_orders}</div></div>
+    <div class="stat-card accent-red"><div class="stat-label">Chờ CK</div><div class="stat-value">{stats.pending_payment}</div></div>
+    <div class="stat-card accent-teal"><div class="stat-label">Đã xác nhận</div><div class="stat-value">{stats.confirmed_orders}</div></div>
+    <div class="stat-card accent-orange"><div class="stat-label">Doanh thu</div><div class="stat-value" style="font-size:1.1rem">{fmtVnd(stats.total_revenue)}</div></div>
+  </div>
+
+  <!-- Orders list -->
+  <div class="card">
+    <div class="card-header"><span class="card-title">Đơn hàng trong đợt ({orders.length})</span></div>
+    {orders.length === 0 ? (
+      <div class="card-body" style="color:var(--text-muted)">Chưa có đơn hàng.</div>
+    ) : (
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr><th>Mã đơn</th><th>Khách hàng</th><th>Tổng tiền</th><th>Thanh toán</th><th>Trạng thái</th></tr>
+          </thead>
+          <tbody>
+            {orders.map(o => (
+              <tr>
+                <td><a href={`/admin/orders/${o.id}`}>{o.id}</a></td>
+                <td>{o.customer_name} <span style="color:var(--text-muted);font-size:0.8rem">· {o.phone}</span></td>
+                <td style="font-weight:700">{fmtVnd(o.total)}</td>
+                <td><span class={`badge badge-${o.payment_status}`}>{payLabels[o.payment_status]}</span></td>
+                <td><span class={`badge badge-${o.order_status}`}>{ordLabels[o.order_status]}</span></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )}
+  </div>
+</AdminLayout>

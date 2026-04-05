@@ -1,0 +1,325 @@
+---
+import { env } from 'cloudflare:workers';
+import { getOpenBatch, isBatchOpen, getProductById, createOrder } from '../lib/db';
+import type { OrderItem, DeliveryMethod } from '../types';
+import '../styles/global.css';
+
+const db = env.DB;
+
+// POST handler
+if (Astro.request.method === 'POST') {
+  const batch = await getOpenBatch(db);
+  if (!batch || !isBatchOpen(batch)) {
+    return new Response('Đợt bán đã đóng', { status: 410 });
+  }
+
+  const form = await Astro.request.formData();
+  const customer_name = form.get('customer_name')?.toString().trim() ?? '';
+  const phone = form.get('phone')?.toString().trim() ?? '';
+  const delivery_method = form.get('delivery_method')?.toString() as DeliveryMethod;
+  const address = form.get('address')?.toString().trim() || null;
+  const notes = form.get('notes')?.toString().trim() || null;
+  const itemsJson = form.get('items')?.toString() ?? '';
+
+  // Validate required fields
+  if (!customer_name || !phone || !delivery_method || !itemsJson) {
+    return Astro.redirect('/checkout?error=missing');
+  }
+  if (delivery_method === 'ship_after_27apr' && !address) {
+    return Astro.redirect('/checkout?error=address');
+  }
+
+  // Parse + server-side reprice items (never trust client price)
+  let clientItems: OrderItem[];
+  try { clientItems = JSON.parse(itemsJson); } catch {
+    return Astro.redirect('/checkout?error=invalid');
+  }
+
+  const repriced: OrderItem[] = [];
+  for (const item of clientItems) {
+    const product = await getProductById(db, item.product_id);
+    if (!product || !product.active) continue;
+    let unit_price = product.price;
+    if (product.has_variants && product.variants_config) {
+      const vc = product.variants_config;
+      unit_price = (item.size && vc.price_overrides?.[item.size]) ? vc.price_overrides[item.size]! : vc.base_price;
+    }
+    repriced.push({ ...item, unit_price });
+  }
+  if (repriced.length === 0) return Astro.redirect('/checkout?error=empty');
+
+  const subtotal = repriced.reduce((s, i) => s + i.unit_price * i.qty, 0);
+  const shipping_fee = delivery_method === 'ship_after_27apr' ? 30000 : 0;
+  const total = subtotal + shipping_fee;
+
+  // Sanitize notes
+  const safeNotes = notes?.replace(/<[^>]+>/g, '').slice(0, 500) ?? null;
+
+  const orderId = await createOrder(db, {
+    batch_id: batch.id,
+    customer_name,
+    phone,
+    delivery_method,
+    address,
+    items: repriced,
+    subtotal,
+    shipping_fee,
+    total,
+    notes: safeNotes,
+  });
+
+  return Astro.redirect(`/payment?order=${orderId}`);
+}
+
+// GET — check batch
+const batch = await getOpenBatch(db);
+const batchOpen = batch ? isBatchOpen(batch) : false;
+const errorParam = Astro.url.searchParams.get('error');
+const errorMessages: Record<string, string> = {
+  missing: 'Vui lòng điền đầy đủ thông tin bắt buộc.',
+  address: 'Vui lòng nhập địa chỉ nhận hàng.',
+  invalid: 'Giỏ hàng không hợp lệ. Vui lòng thử lại.',
+  empty: 'Không có sản phẩm hợp lệ trong giỏ hàng.',
+};
+---
+
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Đặt hàng — SIE Yosakoi Shop</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container" style="max-width:900px">
+    <a href="/" class="site-logo">🎏 SIE Yosakoi Shop</a>
+    <a href="/" class="btn btn-outline" style="font-size:0.875rem;min-height:36px;padding:6px 14px">← Về trang chủ</a>
+  </div>
+</header>
+
+<main>
+  <div class="container" style="max-width:900px">
+    {!batch || !batchOpen ? (
+      <div style="text-align:center;padding:4rem 0">
+        <div style="font-size:3rem;margin-bottom:1rem">🔒</div>
+        <h2 style="font-family:var(--font-display);color:var(--navy-deep);margin-bottom:0.5rem">Đợt bán đã đóng</h2>
+        <p style="color:var(--slate)">Hiện không có đợt bán nào đang mở. Theo dõi fanpage để cập nhật!</p>
+        <a href="/" class="btn btn-primary" style="margin-top:1.5rem">← Về trang chủ</a>
+      </div>
+    ) : (
+      <div class="checkout-layout">
+        <!-- Left: form -->
+        <div>
+          <h1 style="font-family:var(--font-display);font-size:1.5rem;color:var(--navy-deep);margin-bottom:1.5rem;padding-top:2rem">
+            Thông Tin Đặt Hàng
+          </h1>
+
+          {errorParam && (
+            <div class="alert alert-error">{errorMessages[errorParam] ?? 'Đã có lỗi xảy ra.'}</div>
+          )}
+
+          <form id="checkout-form" method="POST" action="/checkout">
+            <!-- Hidden cart items -->
+            <input type="hidden" name="items" id="form-items" />
+
+            <div class="form-card">
+              <div class="form-card-title">Thông tin người nhận</div>
+
+              <div class="form-group">
+                <label class="form-label" for="customer_name">Họ và tên <span class="required">*</span></label>
+                <input class="form-input" type="text" id="customer_name" name="customer_name" required placeholder="Nguyễn Văn A" autocomplete="name" />
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="phone">Số điện thoại <span class="required">*</span></label>
+                <input class="form-input" type="tel" id="phone" name="phone" required placeholder="0912 345 678" autocomplete="tel" pattern="[0-9+\s\-]{9,15}" />
+              </div>
+            </div>
+
+            <div class="form-card" style="margin-top:1rem">
+              <div class="form-card-title">Phương thức nhận hàng</div>
+
+              <div class="radio-group" role="radiogroup" aria-label="Phương thức nhận hàng">
+                <label class="radio-option">
+                  <input type="radio" name="delivery_method" value="pickup_practice" required />
+                  <div>
+                    <div style="font-weight:600;font-size:0.9rem">Nhận hàng tại buổi tập</div>
+                    <div style="font-size:0.8rem;color:var(--slate)">Dành cho thành viên SIE Yosakoi</div>
+                  </div>
+                </label>
+
+                <label class="radio-option" id="festival-option">
+                  <input type="radio" name="delivery_method" value="pickup_festival_sat" id="radio-festival" />
+                  <div>
+                    <div style="font-weight:600;font-size:0.9rem">Nhận hàng tại Liên hoan Yosakoi Việt Nam 2026</div>
+                    <div class="radio-sub" id="festival-sub">
+                      <div class="radio-group" style="margin-top:8px">
+                        <label class="radio-option" style="background:var(--bg-offwhite)">
+                          <input type="radio" name="delivery_method" value="pickup_festival_sat" />
+                          <div style="font-size:0.875rem">Thứ 7, 25 tháng 4 năm 2026</div>
+                        </label>
+                        <label class="radio-option" style="background:var(--bg-offwhite)">
+                          <input type="radio" name="delivery_method" value="pickup_festival_sun" />
+                          <div style="font-size:0.875rem">Chủ nhật, 26 tháng 4 năm 2026</div>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                </label>
+
+                <label class="radio-option">
+                  <input type="radio" name="delivery_method" value="ship_after_27apr" id="radio-ship" />
+                  <div>
+                    <div style="font-weight:600;font-size:0.9rem">Nhận hàng sau ngày 27 tháng 4 năm 2026</div>
+                    <div style="font-size:0.8rem;color:var(--koi-red);font-weight:600">Phí ship: 30.000đ</div>
+                  </div>
+                </label>
+              </div>
+
+              <!-- Address (shown for ship) -->
+              <div id="address-group" style="display:none;margin-top:1rem">
+                <div class="form-group">
+                  <label class="form-label" for="address">Địa chỉ nhận hàng <span class="required">*</span></label>
+                  <input class="form-input" type="text" id="address" name="address" placeholder="Số nhà, đường, phường/xã, quận/huyện, tỉnh/thành" />
+                </div>
+              </div>
+            </div>
+
+            <div class="form-card" style="margin-top:1rem">
+              <div class="form-card-title">Ghi chú đơn hàng</div>
+              <div class="form-group" style="margin-bottom:0">
+                <textarea class="form-textarea" name="notes" id="notes" placeholder="Ghi chú thêm cho đơn hàng (không bắt buộc)"></textarea>
+              </div>
+            </div>
+
+            <button type="submit" class="btn btn-koi btn-full" style="margin-top:1.5rem;font-size:1rem" id="submit-btn">
+              Xác nhận đặt hàng →
+            </button>
+          </form>
+        </div>
+
+        <!-- Right: order summary -->
+        <aside class="order-summary" style="padding-top:2rem">
+          <div class="form-card">
+            <div class="form-card-title">Đơn hàng của bạn</div>
+            <div class="summary-items" id="summary-items">
+              <div style="color:var(--mist);font-size:0.875rem">Giỏ hàng trống</div>
+            </div>
+            <hr class="summary-divider" />
+            <div class="summary-total">
+              <span>Tạm tính</span>
+              <span id="summary-subtotal">0đ</span>
+            </div>
+            <div id="shipping-row" style="display:none;margin-top:8px;font-size:0.875rem;color:var(--slate)">
+              <div style="display:flex;justify-content:space-between">
+                <span>Phí ship</span><span style="font-weight:600;color:var(--koi-red)">30.000đ</span>
+              </div>
+            </div>
+            <div id="total-row" style="display:none;margin-top:8px">
+              <div style="display:flex;justify-content:space-between;font-weight:700;font-size:1.1rem;color:var(--koi-red)">
+                <span>Tổng cộng</span><span id="summary-total">0đ</span>
+              </div>
+            </div>
+            <p class="summary-note" style="margin-top:12px">
+              Thanh toán qua chuyển khoản ngân hàng — QR code ở bước tiếp theo.
+            </p>
+          </div>
+        </aside>
+      </div>
+    )}
+  </div>
+</main>
+
+<footer style="text-align:center;padding:2rem 1rem;background:var(--navy-deep);color:rgba(255,255,255,0.6);font-size:0.8rem;margin-top:3rem">
+  © 2026 SIE Yosakoi Team
+</footer>
+
+<script>
+  const CART_KEY = 'sie_cart';
+
+  function loadCart() {
+    try { return JSON.parse(localStorage.getItem(CART_KEY) || '[]'); } catch { return []; }
+  }
+  function fmtVnd(n: number) { return n.toLocaleString('vi-VN') + 'đ'; }
+
+  function renderSummary(hasShip: boolean) {
+    const items = loadCart();
+    const summaryEl = document.getElementById('summary-items')!;
+    const subtotalEl = document.getElementById('summary-subtotal')!;
+    const shippingRow = document.getElementById('shipping-row')!;
+    const totalRow = document.getElementById('total-row')!;
+    const totalEl = document.getElementById('summary-total')!;
+
+    if (items.length === 0) {
+      summaryEl.innerHTML = '<div style="color:var(--mist);font-size:0.875rem">Giỏ hàng trống</div>';
+      return;
+    }
+
+    summaryEl.innerHTML = items.map((item: any) => `
+      <div class="summary-item">
+        <div class="summary-item-name">
+          ${item.name}${item.color ? ` · ${item.color}` : ''}${item.size ? ` · ${item.size}` : ''}
+          × ${item.qty}
+        </div>
+        <div style="font-weight:600;white-space:nowrap">${fmtVnd(item.total_price)}</div>
+      </div>
+    `).join('');
+
+    const subtotal = items.reduce((s: number, i: any) => s + i.total_price, 0);
+    const shipping = hasShip ? 30000 : 0;
+    subtotalEl.textContent = fmtVnd(subtotal);
+    shippingRow.style.display = hasShip ? 'block' : 'none';
+    if (shipping > 0) {
+      totalRow.style.display = 'block';
+      totalEl.textContent = fmtVnd(subtotal + shipping);
+    } else {
+      totalRow.style.display = 'none';
+    }
+  }
+
+  // Delivery method change — show/hide address and shipping fee
+  document.querySelectorAll<HTMLInputElement>('input[name="delivery_method"]').forEach(radio => {
+    radio.addEventListener('change', () => {
+      const val = radio.value;
+      const addressGroup = document.getElementById('address-group')!;
+      const addrInput = document.getElementById('address') as HTMLInputElement;
+
+      if (val === 'ship_after_27apr') {
+        addressGroup.style.display = 'block';
+        addrInput.required = true;
+      } else {
+        addressGroup.style.display = 'none';
+        addrInput.required = false;
+      }
+      renderSummary(val === 'ship_after_27apr');
+    });
+  });
+
+  // Populate hidden items field before submit
+  const form = document.getElementById('checkout-form') as HTMLFormElement;
+  form?.addEventListener('submit', (e) => {
+    const items = loadCart();
+    if (items.length === 0) {
+      e.preventDefault();
+      alert('Giỏ hàng trống. Vui lòng thêm sản phẩm trước.');
+      return;
+    }
+    const itemsInput = document.getElementById('form-items') as HTMLInputElement;
+    itemsInput.value = JSON.stringify(items);
+  });
+
+  // Init
+  renderSummary(false);
+
+  // Redirect if cart empty
+  const items = loadCart();
+  if (items.length === 0 && !window.location.search.includes('error')) {
+    window.location.href = '/';
+  }
+</script>
+
+</body>
+</html>

@@ -1,0 +1,111 @@
+---
+import { env } from 'cloudflare:workers';
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import { getOpenBatch, getAllProducts, updateProduct } from '../../../lib/db';
+import { uploadImage } from '../../../lib/r2';
+
+const db = env.DB;
+const r2 = env.R2;
+const batch = await getOpenBatch(db);
+
+let successMsg = '';
+let errorMsg = '';
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const action = form.get('action')?.toString();
+  const productId = form.get('product_id')?.toString();
+  if (!productId) return Astro.redirect('/admin/products');
+
+  if (action === 'edit') {
+    const name = form.get('name')?.toString().trim();
+    const price = parseInt(form.get('price')?.toString() || '0');
+    const description = form.get('description')?.toString().trim() || null;
+    const active = form.get('active') === '1';
+    await updateProduct(db, productId, { name, price, description, active });
+    successMsg = 'Đã cập nhật sản phẩm.';
+  } else if (action === 'upload_image') {
+    const file = form.get('image') as File | null;
+    if (file && file.size > 0) {
+      if (file.size > 5 * 1024 * 1024) {
+        errorMsg = 'File quá lớn. Giới hạn 5MB.';
+      } else {
+        const key = `products/${productId}/${Date.now()}.webp`;
+        await uploadImage(r2, key, await file.arrayBuffer(), file.type || 'image/webp');
+        await updateProduct(db, productId, { image_url: `/img/${key}` });
+        successMsg = 'Đã cập nhật hình ảnh.';
+      }
+    }
+  }
+}
+
+const products = batch ? await getAllProducts(db, batch.id) : [];
+function fmtVnd(n: number) { return n.toLocaleString('vi-VN') + 'đ'; }
+---
+
+<AdminLayout title="Sản phẩm" currentPage="products">
+  {successMsg && <div class="alert alert-success">{successMsg}</div>}
+  {errorMsg && <div class="alert alert-error">{errorMsg}</div>}
+  {!batch && <div class="alert alert-info">Chưa có đợt bán nào đang mở.</div>}
+
+  {products.map(p => (
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-header">
+        <span class="card-title">
+          {p.name}
+          <span class={`badge ${p.active ? 'badge-verified' : 'badge-cancelled'}`} style="margin-left:8px">
+            {p.active ? 'Đang bán' : 'Ẩn'}
+          </span>
+        </span>
+      </div>
+      <div class="card-body" style="display:grid;grid-template-columns:160px 1fr;gap:20px">
+        <!-- Image -->
+        <div>
+          {p.image_url ? (
+            <img src={p.image_url} alt={p.name} style="width:100%;border-radius:var(--radius-md);border:1px solid var(--border)" />
+          ) : (
+            <div style="width:100%;aspect-ratio:4/3;background:var(--offwhite);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:0.8rem">
+              Chưa có ảnh
+            </div>
+          )}
+          <form action="/admin/products" method="POST" enctype="multipart/form-data" style="margin-top:8px">
+            <input type="hidden" name="action" value="upload_image" />
+            <input type="hidden" name="product_id" value={p.id} />
+            <div class="upload-area" style="padding:12px;cursor:pointer">
+              <input type="file" name="image" accept="image/*" style="width:100%;font-size:0.8rem" />
+            </div>
+            <button type="submit" class="btn btn-outline btn-sm" style="width:100%;margin-top:6px">📤 Tải ảnh lên</button>
+          </form>
+        </div>
+
+        <!-- Edit form -->
+        <form action="/admin/products" method="POST">
+          <input type="hidden" name="action" value="edit" />
+          <input type="hidden" name="product_id" value={p.id} />
+          <div class="form-group">
+            <label class="form-label">Tên sản phẩm</label>
+            <input class="form-input" type="text" name="name" value={p.name} required />
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Giá (VND)</label>
+              <input class="form-input" type="number" name="price" value={p.price} min="0" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Hiển thị</label>
+              <select class="form-select" name="active">
+                <option value="1" selected={p.active}>Đang bán</option>
+                <option value="0" selected={!p.active}>Ẩn</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Mô tả</label>
+            <textarea class="form-textarea" name="description">{p.description ?? ''}</textarea>
+          </div>
+          <button type="submit" class="btn btn-primary btn-sm">💾 Lưu thay đổi</button>
+        </form>
+      </div>
+    </div>
+  ))}
+</AdminLayout>

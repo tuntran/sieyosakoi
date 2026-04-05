@@ -1,0 +1,293 @@
+---
+import { env } from 'cloudflare:workers';
+import { getOpenBatch, getProducts, isBatchOpen } from '../lib/db';
+import { imgUrl } from '../lib/r2';
+import CountdownTimer from '../components/CountdownTimer.astro';
+import ProductCard from '../components/ProductCard.astro';
+import '../styles/global.css';
+
+const db = env.DB;
+const batch = await getOpenBatch(db);
+const batchOpen = batch ? isBatchOpen(batch) : false;
+const products = batch ? await getProducts(db, batch.id) : [];
+
+function fmtDeadline(ts: number) {
+  return new Date(ts * 1000).toLocaleDateString('vi-VN', {
+    timeZone: 'Asia/Ho_Chi_Minh',
+    day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+  });
+}
+---
+
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SIE Yosakoi Shop — Đợt Bán 03 · 2026</title>
+  <meta name="description" content="Mua merchandise chính thức của đội Yosakoi SIE — áo phông, tenugui, standee và móc khóa chibi." />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+</head>
+<body>
+
+<!-- ── Deadline bar ──────────────────────────────────── -->
+{batch && batchOpen && (
+  <div class="deadline-bar">
+    ⏳ Đặt hàng trước <strong>{fmtDeadline(batch.close_at!)}</strong> · Giao hàng tại buổi tập hoặc Liên hoan Yosakoi 2026 🎏
+  </div>
+)}
+
+<!-- ── Header ────────────────────────────────────────── -->
+<header class="site-header">
+  <div class="container">
+    <a href="/" class="site-logo">🎏 SIE Yosakoi Shop</a>
+    <div class="header-actions">
+      <button class="cart-btn" id="cart-open-btn" aria-label="Mở giỏ hàng">
+        🛒 Giỏ hàng
+        <span class="cart-count" id="cart-count" data-count="0">0</span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<!-- ── Hero ──────────────────────────────────────────── -->
+<section class="hero">
+  <img
+    class="hero-bg"
+    src="/img/hero-koinobori.webp"
+    alt="Koinobori — SIE Yosakoi 2026"
+    loading="eager"
+  />
+  <div class="hero-content container" style="max-width:900px">
+    <span class="hero-tag">🎏 Đợt Bán 03 · 2026</span>
+    <h1 class="hero-title">SIE Yosakoi<br/>Merchandise</h1>
+    <p class="hero-sub">Áo phông đội, tenugui, standee &amp; móc khóa chibi — kỷ niệm Liên hoan Yosakoi Việt Nam 2026.</p>
+    {batch && batchOpen ? (
+      <button class="hero-cta" id="hero-shop-btn">Mua ngay →</button>
+    ) : (
+      <span style="display:inline-block;background:rgba(255,255,255,0.15);color:#fff;padding:12px 24px;border-radius:8px;font-weight:600">
+        Hiện không có đợt bán nào đang mở
+      </span>
+    )}
+  </div>
+</section>
+
+<!-- ── Batch status strip ─────────────────────────────── -->
+{batch && (
+  <div class="batch-strip">
+    <div class="container" style="max-width:900px">
+      <div class="batch-pulse"></div>
+      <div>
+        <div class="batch-name">{batch.name}</div>
+        {batch.close_at && (
+          <div class="batch-deadline">Kết thúc: {fmtDeadline(batch.close_at)}</div>
+        )}
+      </div>
+      {batchOpen && batch.close_at && (
+        <CountdownTimer deadline={batch.close_at} />
+      )}
+      {!batchOpen && (
+        <span style="margin-left:auto;font-weight:700;color:var(--koi-red)">Đã đóng</span>
+      )}
+    </div>
+  </div>
+)}
+
+<!-- ── Products ───────────────────────────────────────── -->
+<main>
+  <section class="section" id="products">
+    <div class="container" style="max-width:900px">
+      {!batch || products.length === 0 ? (
+        <div style="text-align:center;padding:4rem 0;color:var(--slate)">
+          <div style="font-size:3rem;margin-bottom:1rem">🎀</div>
+          <div style="font-size:1.1rem;font-weight:600">Hiện chưa có sản phẩm nào</div>
+          <div style="font-size:0.9rem;margin-top:0.5rem">Vui lòng theo dõi fanpage SIE Yosakoi để cập nhật.</div>
+        </div>
+      ) : (
+        <>
+          <h2 class="section-title">Sản Phẩm</h2>
+          <div class="section-divider"></div>
+          <div class="product-grid">
+            {products.map(p => <ProductCard product={p} />)}
+          </div>
+        </>
+      )}
+    </div>
+  </section>
+
+  <!-- ── About section ───────────────────────────────── -->
+  <section class="about-section">
+    <div class="container" style="max-width:900px">
+      <h2 class="section-title">Về SIE Yosakoi</h2>
+      <div class="section-divider"></div>
+      <p class="about-text">
+        <strong>Yosakoi</strong> (よさこい) là điệu múa dân gian hiện đại đến từ Kochi, Nhật Bản — kết hợp giữa âm nhạc truyền thống và vũ đạo đương đại đầy năng lượng. Mỗi đội Yosakoi tự sáng tác trang phục, âm nhạc và vũ đạo riêng, mang bản sắc độc đáo của nhóm mình lên sân khấu.
+      </p>
+      <p class="about-text">
+        <strong>SIE Yosakoi</strong> là đội Yosakoi thuộc Câu lạc bộ Văn hóa Nhật Bản — Trường Đại học Kinh tế Quốc dân. Chúng mình sẽ biểu diễn tại <strong>Liên hoan Yosakoi Việt Nam 2026</strong> vào tháng 4.
+      </p>
+      <p class="about-text">
+        Bộ merchandise này được thiết kế riêng cho bài diễn 2026 🎏 Mỗi sản phẩm là một kỷ vật nhỏ để bạn lưu giữ khoảnh khắc cùng đội.
+      </p>
+      <div class="social-links">
+        <a class="social-link" href="https://facebook.com" target="_blank" rel="noopener">
+          📘 Facebook SIE Yosakoi
+        </a>
+        <a class="social-link" href="https://www.tiktok.com" target="_blank" rel="noopener">
+          🎵 TikTok
+        </a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- ── Footer ─────────────────────────────────────────── -->
+<footer class="site-footer">
+  <div class="footer-koinobori">🎏🎏🎏</div>
+  <p>© 2026 SIE Yosakoi Team · <a href="/admin/login">Admin</a></p>
+  <p style="margin-top:8px;font-size:0.8rem">Liên hoan Yosakoi Việt Nam 2026 · Hẹn gặp tại sân khấu! 🌸</p>
+</footer>
+
+<!-- ── Cart Drawer ─────────────────────────────────────── -->
+<div class="cart-overlay" id="cart-overlay"></div>
+<div class="cart-drawer" id="cart-drawer" role="dialog" aria-label="Giỏ hàng" aria-modal="true">
+  <div class="cart-drawer-header">
+    <span class="cart-drawer-title">🛒 Giỏ hàng</span>
+    <button class="cart-close-btn" id="cart-close-btn" aria-label="Đóng">×</button>
+  </div>
+  <div class="cart-items" id="cart-items-list">
+    <div class="cart-empty">Giỏ hàng trống</div>
+  </div>
+  <div class="cart-footer" id="cart-footer" style="display:none">
+    <div class="cart-subtotal">
+      <span>Tạm tính</span>
+      <span class="cart-subtotal-amount" id="cart-subtotal">0đ</span>
+    </div>
+    <a href="/checkout" class="btn btn-primary btn-full" id="checkout-link">Đặt hàng →</a>
+  </div>
+</div>
+
+<script>
+  // ── SieCart — localStorage cart manager ──────────────────
+  const CART_KEY = 'sie_cart';
+
+  interface CartItem {
+    product_id: string;
+    name: string;
+    color?: string;
+    color_slug?: string;
+    size?: string;
+    qty: number;
+    unit_price: number;
+    total_price: number;
+  }
+
+  function loadCart(): CartItem[] {
+    try { return JSON.parse(localStorage.getItem(CART_KEY) || '[]'); } catch { return []; }
+  }
+
+  function saveCart(items: CartItem[]) {
+    localStorage.setItem(CART_KEY, JSON.stringify(items));
+  }
+
+  function cartKey(item: CartItem) {
+    return `${item.product_id}__${item.color_slug ?? ''}__${item.size ?? ''}`;
+  }
+
+  function updateBadge(items: CartItem[]) {
+    const count = items.reduce((s, i) => s + i.qty, 0);
+    const badge = document.getElementById('cart-count');
+    if (badge) {
+      badge.textContent = String(count);
+      badge.dataset.count = String(count);
+    }
+  }
+
+  function fmtVnd(n: number) {
+    return n.toLocaleString('vi-VN') + 'đ';
+  }
+
+  function renderCart() {
+    const items = loadCart();
+    updateBadge(items);
+    const list = document.getElementById('cart-items-list')!;
+    const footer = document.getElementById('cart-footer')!;
+    const subtotalEl = document.getElementById('cart-subtotal')!;
+
+    if (items.length === 0) {
+      list.innerHTML = '<div class="cart-empty">Giỏ hàng trống 🎏</div>';
+      footer.style.display = 'none';
+      return;
+    }
+
+    list.innerHTML = items.map((item, idx) => `
+      <div class="cart-item">
+        <div class="cart-item-info">
+          <div class="cart-item-name">${item.name}</div>
+          <div class="cart-item-meta">
+            ${[item.color, item.size].filter(Boolean).join(' · ')}
+            · SL: ${item.qty}
+          </div>
+        </div>
+        <div class="cart-item-price">${fmtVnd(item.total_price)}</div>
+        <button class="cart-item-remove" data-idx="${idx}" aria-label="Xoá">×</button>
+      </div>
+    `).join('');
+
+    const total = items.reduce((s, i) => s + i.total_price, 0);
+    subtotalEl.textContent = fmtVnd(total);
+    footer.style.display = 'block';
+
+    // Remove item buttons
+    list.querySelectorAll<HTMLButtonElement>('.cart-item-remove').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const current = loadCart();
+        current.splice(parseInt(btn.dataset.idx!), 1);
+        saveCart(current);
+        renderCart();
+      });
+    });
+  }
+
+  // Add to cart event from ProductCard
+  document.addEventListener('add-to-cart', (e: Event) => {
+    const item = (e as CustomEvent<CartItem>).detail;
+    const items = loadCart();
+    const key = cartKey(item);
+    const existing = items.find(i => cartKey(i) === key);
+    if (existing) {
+      existing.qty += item.qty;
+      existing.total_price = existing.unit_price * existing.qty;
+    } else {
+      items.push(item);
+    }
+    saveCart(items);
+    renderCart();
+    openCart();
+  });
+
+  // Drawer open/close
+  function openCart() {
+    document.getElementById('cart-drawer')!.classList.add('open');
+    document.getElementById('cart-overlay')!.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeCart() {
+    document.getElementById('cart-drawer')!.classList.remove('open');
+    document.getElementById('cart-overlay')!.classList.remove('open');
+    document.body.style.overflow = '';
+  }
+
+  document.getElementById('cart-open-btn')?.addEventListener('click', openCart);
+  document.getElementById('cart-close-btn')?.addEventListener('click', closeCart);
+  document.getElementById('cart-overlay')?.addEventListener('click', closeCart);
+  document.getElementById('hero-shop-btn')?.addEventListener('click', () => {
+    document.getElementById('products')?.scrollIntoView({ behavior: 'smooth' });
+  });
+
+  // Init on load
+  renderCart();
+</script>
+
+</body>
+</html>

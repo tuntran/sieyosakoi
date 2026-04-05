@@ -1,0 +1,213 @@
+---
+import type { Product, VariantsConfig } from '../types';
+import { imgUrl } from '../lib/r2';
+
+interface Props {
+  product: Product;
+}
+
+const { product } = Astro.props;
+const isSecret = product.price === 0;
+const vc = product.variants_config as VariantsConfig | null;
+
+function fmtPrice(p: number) {
+  return p.toLocaleString('vi-VN') + 'đ';
+}
+---
+
+<div class="product-card" data-product-id={product.id}>
+  <!-- Image area -->
+  <div class="product-card-img">
+    {isSecret ? (
+      <div class="secret-overlay">
+        <span class="secret-icon">🎀</span>
+        <span>Bí Mật</span>
+        <span style="font-size:0.75rem;opacity:0.7">Sắp tiết lộ</span>
+      </div>
+    ) : (
+      <img
+        src={imgUrl(product.image_url)}
+        alt={product.name}
+        loading="lazy"
+        id={`product-img-${product.id}`}
+      />
+    )}
+  </div>
+
+  <!-- Body -->
+  <div class="product-card-body">
+    <div class="product-card-name">{product.name}</div>
+    {product.description && (
+      <div class="product-card-desc">{product.description}</div>
+    )}
+
+    {isSecret ? (
+      <div class="product-card-price" style="color:var(--slate)">
+        Giá: <em>Sẽ thông báo sau</em>
+      </div>
+    ) : product.has_variants && vc ? (
+      <>
+        <div class="product-card-price">
+          Từ {fmtPrice(vc.base_price)}
+          {vc.price_overrides && Object.keys(vc.price_overrides).length > 0 && (
+            <small> · 3XL: {fmtPrice(vc.price_overrides['3XL'] ?? vc.base_price)}</small>
+          )}
+        </div>
+
+        <!-- Color picker -->
+        <div class="variant-section">
+          <span class="variant-label">Màu sắc</span>
+          <div class="color-swatches">
+            {vc.colors.map((c, i) => (
+              <button
+                class={`color-swatch${i === 0 ? ' active' : ''}`}
+                data-slug={c.slug}
+                data-images={JSON.stringify(c.images)}
+                title={c.name}
+                style={`background:var(--color-swatch-${c.slug}, #ccc);`}
+                aria-label={c.name}
+              >
+                {/* Show color abbreviation as text fallback */}
+                <span style="display:none">{c.name}</span>
+              </button>
+            ))}
+          </div>
+          <span class="variant-selected-color" style="font-size:0.8rem;color:var(--slate);margin-top:4px;display:block">
+            {vc.colors[0]?.name ?? ''}
+          </span>
+        </div>
+
+        <!-- Size picker -->
+        <div class="variant-section">
+          <span class="variant-label">Cỡ</span>
+          <div class="size-grid">
+            {vc.sizes.map(size => (
+              <button class="size-btn" data-size={size} data-price={vc.price_overrides?.[size] ?? vc.base_price}>
+                {size}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <!-- Qty + add -->
+        <div class="qty-row" style="margin-top:auto">
+          <div class="qty-control">
+            <button class="qty-btn qty-dec" aria-label="Giảm">−</button>
+            <input class="qty-input" type="number" value="1" min="1" max="99" aria-label="Số lượng">
+            <button class="qty-btn qty-inc" aria-label="Tăng">+</button>
+          </div>
+        </div>
+        <button class="btn btn-koi btn-full add-to-cart-btn" data-product={JSON.stringify({
+          product_id: product.id,
+          name: product.name,
+          has_variants: true,
+          base_price: vc.base_price,
+          price_overrides: vc.price_overrides,
+        })}>
+          🛒 Thêm vào giỏ
+        </button>
+      </>
+    ) : (
+      <>
+        <div class="product-card-price">{fmtPrice(product.price)}</div>
+        <div class="qty-row" style="margin-top:auto">
+          <div class="qty-control">
+            <button class="qty-btn qty-dec" aria-label="Giảm">−</button>
+            <input class="qty-input" type="number" value="1" min="1" max="99" aria-label="Số lượng">
+            <button class="qty-btn qty-inc" aria-label="Tăng">+</button>
+          </div>
+        </div>
+        <button class="btn btn-koi btn-full add-to-cart-btn" data-product={JSON.stringify({
+          product_id: product.id,
+          name: product.name,
+          has_variants: false,
+          unit_price: product.price,
+        })}>
+          🛒 Thêm vào giỏ
+        </button>
+      </>
+    )}
+  </div>
+</div>
+
+<style>
+  /* Color swatch colors — hardcoded for the 4 t-shirt colors */
+  [data-slug="blue"]  { background: #1A5F7A !important; }
+  [data-slug="black"] { background: #1a1a1a !important; }
+  [data-slug="red"]   { background: #8B1A2E !important; }
+  [data-slug="white"] { background: #f5f5f5 !important; border: 2px solid #ccc !important; }
+</style>
+
+<script>
+  // ProductCard interactive behavior (vanilla JS, runs once per card via selector scope)
+  document.querySelectorAll<HTMLElement>('.product-card').forEach(card => {
+    const productId = card.dataset.productId!;
+
+    // ── Qty controls ─────────────────────────────────────────
+    card.querySelector('.qty-dec')?.addEventListener('click', () => {
+      const input = card.querySelector<HTMLInputElement>('.qty-input');
+      if (input) input.value = String(Math.max(1, parseInt(input.value || '1') - 1));
+    });
+    card.querySelector('.qty-inc')?.addEventListener('click', () => {
+      const input = card.querySelector<HTMLInputElement>('.qty-input');
+      if (input) input.value = String(Math.min(99, parseInt(input.value || '1') + 1));
+    });
+
+    // ── Color swatches ────────────────────────────────────────
+    card.querySelectorAll<HTMLButtonElement>('.color-swatch').forEach(btn => {
+      btn.addEventListener('click', () => {
+        card.querySelectorAll('.color-swatch').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const label = card.querySelector<HTMLElement>('.variant-selected-color');
+        if (label) label.textContent = btn.title;
+        // Update hero image
+        const images: string[] = JSON.parse(btn.dataset.images || '[]');
+        const img = document.getElementById(`product-img-${productId}`) as HTMLImageElement | null;
+        if (img && images[0]) img.src = `/img/${images[0]}`;
+      });
+    });
+
+    // ── Size buttons ──────────────────────────────────────────
+    card.querySelectorAll<HTMLButtonElement>('.size-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        card.querySelectorAll('.size-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+      });
+    });
+
+    // ── Add to cart ───────────────────────────────────────────
+    card.querySelector('.add-to-cart-btn')?.addEventListener('click', () => {
+      const raw = card.querySelector<HTMLElement>('.add-to-cart-btn')?.dataset.product;
+      if (!raw) return;
+      const meta = JSON.parse(raw);
+      const qty = parseInt(card.querySelector<HTMLInputElement>('.qty-input')?.value || '1');
+
+      let unit_price = meta.unit_price ?? meta.base_price;
+      let color: string | undefined;
+      let color_slug: string | undefined;
+      let size: string | undefined;
+
+      if (meta.has_variants) {
+        const activeColor = card.querySelector<HTMLElement>('.color-swatch.active');
+        color = activeColor?.title;
+        color_slug = activeColor?.dataset.slug;
+        const activeSize = card.querySelector<HTMLElement>('.size-btn.active');
+        size = activeSize?.dataset.size;
+        if (!size) { alert('Vui lòng chọn cỡ!'); return; }
+        unit_price = parseInt(activeSize?.dataset.price || String(meta.base_price));
+      }
+
+      const item = {
+        product_id: meta.product_id,
+        name: meta.name,
+        color, color_slug, size,
+        qty,
+        unit_price,
+        total_price: unit_price * qty,
+      };
+
+      // Dispatch to SieCart handler (defined in index.astro)
+      document.dispatchEvent(new CustomEvent('add-to-cart', { detail: item }));
+    });
+  });
+</script>

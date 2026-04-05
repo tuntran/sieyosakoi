@@ -1,0 +1,141 @@
+---
+import { env } from 'cloudflare:workers';
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+
+const kv = env.KV;
+let successMsg = '';
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const action = form.get('action')?.toString();
+
+  if (action === 'bank_info') {
+    const bankInfo = {
+      bank: form.get('bank')?.toString().trim() ?? '',
+      account: form.get('account')?.toString().trim() ?? '',
+      name: form.get('name')?.toString().trim() ?? '',
+      account_name_ascii: form.get('account_name_ascii')?.toString().trim() ?? '',
+    };
+    await kv.put('config:bank_info', JSON.stringify(bankInfo));
+    successMsg = 'Đã lưu thông tin ngân hàng.';
+  } else if (action === 'shop_info') {
+    const deadline = parseInt(form.get('deadline')?.toString() ?? '0');
+    const shopInfo = {
+      name: form.get('shop_name')?.toString().trim() ?? '',
+      batch_name: form.get('batch_name')?.toString().trim() ?? '',
+      deadline: isNaN(deadline) ? 0 : deadline,
+      deadline_label: form.get('deadline_label')?.toString().trim() ?? '',
+    };
+    await kv.put('config:shop_info', JSON.stringify(shopInfo));
+    successMsg = 'Đã lưu thông tin shop.';
+  } else if (action === 'admin_password') {
+    const password = form.get('password')?.toString();
+    const confirm = form.get('confirm')?.toString();
+    if (!password || password !== confirm) {
+      successMsg = ''; // will use error below
+    } else {
+      const { hashPassword } = await import('../../../lib/auth');
+      const hash = await hashPassword(password);
+      await kv.put('admin_password', hash);
+      successMsg = 'Đã cập nhật mật khẩu.';
+    }
+  }
+}
+
+// Load current config values with safe defaults
+let bankInfo = { bank: 'Techcombank', account: '19040070626015', name: 'Vũ Khánh Chi', account_name_ascii: 'Vu Khanh Chi' };
+let shopInfo = { name: 'SIE Yosakoi Shop', batch_name: 'Đợt Bán 03 — 2026', deadline: 1744732799, deadline_label: '23:59 ngày 14/4/2026' };
+
+try {
+  const bankRaw = await kv.get('config:bank_info');
+  if (bankRaw) bankInfo = JSON.parse(bankRaw);
+  const shopRaw = await kv.get('config:shop_info');
+  if (shopRaw) shopInfo = JSON.parse(shopRaw);
+} catch { /* use defaults */ }
+---
+
+<AdminLayout title="Cài đặt" currentPage="settings">
+  {successMsg && <div class="alert alert-success">{successMsg}</div>}
+
+  <!-- Bank info -->
+  <div class="card" style="margin-bottom:20px">
+    <div class="card-header"><span class="card-title">💳 Thông tin ngân hàng</span></div>
+    <div class="card-body">
+      <form action="/admin/settings" method="POST">
+        <input type="hidden" name="action" value="bank_info" />
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Ngân hàng</label>
+            <input class="form-input" type="text" name="bank" value={bankInfo.bank} required />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Số tài khoản</label>
+            <input class="form-input" type="text" name="account" value={bankInfo.account} required />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Tên chủ TK (tiếng Việt)</label>
+            <input class="form-input" type="text" name="name" value={bankInfo.name} required />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Tên chủ TK (không dấu — dùng cho VietQR)</label>
+            <input class="form-input" type="text" name="account_name_ascii" value={bankInfo.account_name_ascii} required />
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary btn-sm">💾 Lưu thông tin ngân hàng</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Shop info -->
+  <div class="card" style="margin-bottom:20px">
+    <div class="card-header"><span class="card-title">🛍️ Thông tin shop</span></div>
+    <div class="card-body">
+      <form action="/admin/settings" method="POST">
+        <input type="hidden" name="action" value="shop_info" />
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Tên shop</label>
+            <input class="form-input" type="text" name="shop_name" value={shopInfo.name} required />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Tên đợt bán</label>
+            <input class="form-input" type="text" name="batch_name" value={shopInfo.batch_name} required />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Deadline (Unix timestamp)</label>
+            <input class="form-input" type="number" name="deadline" value={shopInfo.deadline} />
+            <span class="form-hint">1744732799 = 23:59:59 ngày 14/4/2026 (VN)</span>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Nhãn deadline (hiển thị)</label>
+            <input class="form-input" type="text" name="deadline_label" value={shopInfo.deadline_label} />
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary btn-sm">💾 Lưu thông tin shop</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Change password -->
+  <div class="card">
+    <div class="card-header"><span class="card-title">🔑 Đổi mật khẩu admin</span></div>
+    <div class="card-body">
+      <form action="/admin/settings" method="POST" style="max-width:360px">
+        <input type="hidden" name="action" value="admin_password" />
+        <div class="form-group">
+          <label class="form-label">Mật khẩu mới</label>
+          <input class="form-input" type="password" name="password" required minlength="6" autocomplete="new-password" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Xác nhận mật khẩu</label>
+          <input class="form-input" type="password" name="confirm" required minlength="6" autocomplete="new-password" />
+        </div>
+        <button type="submit" class="btn btn-danger btn-sm">🔑 Đổi mật khẩu</button>
+      </form>
+    </div>
+  </div>
+</AdminLayout>

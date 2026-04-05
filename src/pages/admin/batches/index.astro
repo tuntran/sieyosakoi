@@ -1,0 +1,72 @@
+---
+import { env } from 'cloudflare:workers';
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import { getBatches, closeBatch, getOrderCountByBatch } from '../../../lib/db';
+
+const db = env.DB;
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const batchId = form.get('batch_id')?.toString();
+  if (batchId) await closeBatch(db, batchId);
+  return Astro.redirect('/admin/batches');
+}
+
+const batches = await getBatches(db);
+// Get order counts for each batch
+const countsArr = await Promise.all(batches.map(b => getOrderCountByBatch(db, b.id)));
+const counts: Record<string, number> = {};
+batches.forEach((b, i) => { counts[b.id] = countsArr[i]!; });
+
+function fmtDate(ts: number | null) {
+  if (!ts) return '—';
+  return new Date(ts * 1000).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+}
+const statusLabel: Record<string, string> = { open: 'Đang mở', closed: 'Đã đóng', draft: 'Nháp' };
+---
+
+<AdminLayout title="Đợt bán" currentPage="batches">
+  <div class="card">
+    <div class="card-header"><span class="card-title">🗂️ Danh sách đợt bán</span></div>
+    {batches.length === 0 ? (
+      <div class="card-body" style="color:var(--text-muted)">Chưa có đợt bán nào.</div>
+    ) : (
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Tên đợt</th>
+              <th>Trạng thái</th>
+              <th>Deadline</th>
+              <th>Số đơn</th>
+              <th>Hành động</th>
+            </tr>
+          </thead>
+          <tbody>
+            {batches.map(b => (
+              <tr>
+                <td>
+                  <a href={`/admin/batches/${b.id}`} style="font-weight:700">{b.name}</a>
+                  <div style="font-size:0.75rem;color:var(--text-muted);font-family:monospace">{b.id}</div>
+                </td>
+                <td><span class={`badge badge-${b.status}`}>{statusLabel[b.status] ?? b.status}</span></td>
+                <td style="font-size:0.8rem;white-space:nowrap">{fmtDate(b.close_at)}</td>
+                <td style="font-weight:700">{counts[b.id] ?? 0}</td>
+                <td style="display:flex;gap:6px;flex-wrap:wrap">
+                  <a href={`/admin/batches/${b.id}`} class="btn btn-outline btn-sm">Chi tiết</a>
+                  {b.status === 'open' && (
+                    <form action="/admin/batches" method="POST"
+                      onsubmit="return confirm('Đóng đợt bán này? Khách hàng sẽ không đặt được nữa.')">
+                      <input type="hidden" name="batch_id" value={b.id} />
+                      <button type="submit" class="btn btn-danger btn-sm">🔒 Đóng đợt</button>
+                    </form>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )}
+  </div>
+</AdminLayout>

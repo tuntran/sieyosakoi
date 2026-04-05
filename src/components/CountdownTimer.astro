@@ -1,0 +1,43 @@
+---
+// Client-side countdown to deadline
+interface Props {
+  deadline: number; // Unix timestamp (seconds)
+}
+const { deadline } = Astro.props;
+---
+
+<div class="countdown" id="countdown" aria-live="polite">
+  <div class="countdown-unit"><span class="countdown-num" id="cd-days">--</span><span class="countdown-label">ngày</span></div>
+  <span class="countdown-sep">:</span>
+  <div class="countdown-unit"><span class="countdown-num" id="cd-hours">--</span><span class="countdown-label">giờ</span></div>
+  <span class="countdown-sep">:</span>
+  <div class="countdown-unit"><span class="countdown-num" id="cd-mins">--</span><span class="countdown-label">phút</span></div>
+  <span class="countdown-sep">:</span>
+  <div class="countdown-unit"><span class="countdown-num" id="cd-secs">--</span><span class="countdown-label">giây</span></div>
+</div>
+
+<script define:vars={{ deadline }}>
+  const deadlineMs = deadline * 1000;
+
+  function pad(n) { return String(n).padStart(2, '0'); }
+
+  function tick() {
+    const diff = deadlineMs - Date.now();
+    if (diff <= 0) {
+      document.getElementById('countdown').innerHTML =
+        '<span style="color:var(--koi-red);font-weight:700">Đã hết hạn đặt hàng</span>';
+      return;
+    }
+    const d = Math.floor(diff / 86400000);
+    const h = Math.floor((diff % 86400000) / 3600000);
+    const m = Math.floor((diff % 3600000) / 60000);
+    const s = Math.floor((diff % 60000) / 1000);
+    document.getElementById('cd-days').textContent = String(d);
+    document.getElementById('cd-hours').textContent = pad(h);
+    document.getElementById('cd-mins').textContent = pad(m);
+    document.getElementById('cd-secs').textContent = pad(s);
+  }
+
+  tick();
+  setInterval(tick, 1000);
+</script>

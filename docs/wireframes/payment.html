@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SIE Yosakoi Shop — Thanh Toán</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Old+Mincho:wght@400;600;700;900&family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --color-indigo-deep:  #1B3A6B;
+    --color-indigo-mid:   #2E5299;
+    --color-indigo-light: #4A72C4;
+    --color-indigo-wash:  #E8EEF8;
+    --color-offwhite:     #F8F6F2;
+    --color-warm-white:   #FDFCFA;
+    --color-charcoal:     #2C2C2C;
+    --color-slate:        #5A5A5A;
+    --color-mist:         #9A9A9A;
+    --color-border:       #E2DDD6;
+    --color-gold:         #C9A84C;
+    --color-gold-light:   #F5ECC7;
+    --color-success:      #2E7D32;
+    --color-success-bg:   #E8F5E9;
+    --color-warning:      #E65100;
+    --color-warning-bg:   #FFF3E0;
+    --font-display: 'Zen Old Mincho', serif;
+    --font-body:    'Noto Sans JP', sans-serif;
+    --radius-sm: 4px; --radius-md: 8px; --radius-lg: 12px; --radius-xl: 16px; --radius-full: 9999px;
+    --shadow-sm: 0 2px 8px rgba(27,58,107,0.08);
+    --shadow-md: 0 4px 16px rgba(27,58,107,0.12);
+  }
+  body {
+    font-family: var(--font-body);
+    background: var(--color-offwhite);
+    color: var(--color-charcoal);
+    line-height: 1.7;
+    min-height: 100vh;
+  }
+
+  /* ── Header ── */
+  .site-header { background: var(--color-indigo-deep); box-shadow: var(--shadow-md); }
+  .header-inner {
+    max-width: 768px; margin: 0 auto; padding: 0 16px;
+    display: flex; align-items: center; justify-content: space-between; height: 56px;
+  }
+  .header-back {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 14px; color: rgba(255,255,255,0.75); font-weight: 500;
+  }
+  .header-title { font-family: var(--font-display); font-size: 16px; font-weight: 700; color: #fff; }
+  .header-step  { font-size: 12px; color: rgba(255,255,255,0.5); }
+
+  /* ── Progress ── */
+  .checkout-progress {
+    background: var(--color-warm-white); border-bottom: 1px solid var(--color-border); padding: 12px 16px;
+  }
+  .progress-inner { max-width: 768px; margin: 0 auto; }
+  .progress-steps { display: flex; align-items: center; justify-content: center; }
+  .progress-step { display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 1; position: relative; }
+  .progress-step:not(:last-child)::after {
+    content: ''; position: absolute; top: 14px; left: calc(50% + 14px);
+    width: calc(100% - 28px); height: 2px; background: var(--color-border);
+  }
+  .progress-step.done::after  { background: var(--color-indigo-light); }
+  .progress-step.active::after { background: var(--color-indigo-light); }
+  .step-dot {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: var(--color-border); color: var(--color-mist);
+    font-size: 12px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center; position: relative; z-index: 1;
+  }
+  .progress-step.done .step-dot  { background: var(--color-indigo-light); color: white; }
+  .progress-step.active .step-dot { background: var(--color-indigo-deep); color: white; box-shadow: 0 0 0 3px var(--color-indigo-wash); }
+  .step-label { font-size: 10px; color: var(--color-mist); font-weight: 600; letter-spacing: 0.05em; }
+  .progress-step.active .step-label { color: var(--color-indigo-deep); }
+  .progress-step.done  .step-label  { color: var(--color-indigo-light); }
+
+  /* ── Layout ── */
+  .page-inner { max-width: 768px; margin: 0 auto; padding: 24px 16px 48px; }
+
+  /* ── Countdown timer ── */
+  .countdown-bar {
+    background: var(--color-warning-bg);
+    border: 1px solid rgba(230,81,0,0.2);
+    border-radius: var(--radius-md);
+    padding: 12px 16px;
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 20px;
+  }
+  .countdown-icon { font-size: 20px; flex-shrink: 0; }
+  .countdown-text { flex: 1; font-size: 13px; color: var(--color-warning); font-weight: 500; line-height: 1.5; }
+  .countdown-timer {
+    font-family: monospace; font-size: 20px; font-weight: 700;
+    color: var(--color-warning); letter-spacing: 0.05em; flex-shrink: 0;
+  }
+
+  /* ── Order Summary Strip ── */
+  .order-strip {
+    background: var(--color-indigo-wash);
+    border: 1px solid rgba(27,58,107,0.12);
+    border-radius: var(--radius-lg);
+    padding: 14px 16px;
+    margin-bottom: 20px;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  }
+  .order-strip-id   { font-size: 13px; color: var(--color-slate); }
+  .order-strip-id strong { font-family: monospace; font-size: 15px; color: var(--color-indigo-deep); font-weight: 700; }
+  .order-strip-total { font-size: 20px; font-weight: 700; color: var(--color-indigo-deep); }
+  .order-strip-total span { font-size: 13px; font-weight: 400; color: var(--color-slate); margin-right: 4px; }
+
+  /* ── Payment instruction cards ── */
+  .payment-card {
+    background: var(--color-warm-white);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+    margin-bottom: 16px;
+  }
+  .payment-card-header {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--color-border);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .payment-card-icon {
+    width: 32px; height: 32px; border-radius: var(--radius-md);
+    background: var(--color-indigo-wash);
+    display: flex; align-items: center; justify-content: center; font-size: 16px;
+  }
+  .payment-card-title { font-family: var(--font-display); font-size: 15px; font-weight: 700; color: var(--color-indigo-deep); }
+  .payment-card-body { padding: 16px; }
+
+  /* ── VietQR placeholder ── */
+  .qr-section {
+    display: flex; flex-direction: column; align-items: center; gap: 16px;
+  }
+  .qr-frame {
+    width: 200px; height: 200px;
+    border: 2px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    background: var(--color-offwhite);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 8px; position: relative; overflow: hidden;
+  }
+  /* QR corner marks */
+  .qr-frame::before, .qr-frame::after {
+    content: ''; position: absolute;
+    width: 24px; height: 24px;
+    border-color: var(--color-indigo-deep); border-style: solid;
+  }
+  .qr-frame::before { top: 8px; left: 8px; border-width: 2px 0 0 2px; }
+  .qr-frame::after  { bottom: 8px; right: 8px; border-width: 0 2px 2px 0; }
+  .qr-grid {
+    display: grid; grid-template-columns: repeat(8, 10px); grid-template-rows: repeat(8, 10px);
+    gap: 2px; opacity: 0.35;
+  }
+  .qr-cell { background: var(--color-indigo-deep); border-radius: 1px; }
+  /* Simulate QR pattern with randomish cells */
+  .qr-cell:nth-child(3n+1), .qr-cell:nth-child(7n+2), .qr-cell:nth-child(5n+4) { background: transparent; }
+  /* QR corner squares */
+  .qr-cell:is(:nth-child(1),:nth-child(2),:nth-child(3),:nth-child(9),:nth-child(17),:nth-child(10),:nth-child(11),:nth-child(19)) { background: var(--color-indigo-deep); }
+
+  .qr-vietqr-badge {
+    background: var(--color-indigo-deep); color: white;
+    font-size: 10px; font-weight: 700; padding: 3px 10px;
+    border-radius: var(--radius-full); letter-spacing: 0.12em;
+  }
+  .qr-label { font-size: 12px; color: var(--color-slate); text-align: center; line-height: 1.5; }
+  .qr-download {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 13px; font-weight: 600; color: var(--color-indigo-light);
+    border: 1.5px solid var(--color-indigo-light);
+    padding: 8px 16px; border-radius: var(--radius-md);
+    transition: background 0.15s; cursor: pointer;
+  }
+  .qr-download:hover { background: var(--color-indigo-wash); }
+
+  /* ── Bank details ── */
+  .bank-details { display: flex; flex-direction: column; gap: 12px; }
+  .bank-row {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    gap: 12px; padding-bottom: 12px;
+    border-bottom: 1px solid var(--color-border);
+  }
+  .bank-row:last-child { border-bottom: none; padding-bottom: 0; }
+  .bank-row-label { font-size: 12px; color: var(--color-mist); font-weight: 600; letter-spacing: 0.05em; flex-shrink: 0; min-width: 110px; }
+  .bank-row-value { font-size: 14px; font-weight: 600; color: var(--color-charcoal); text-align: right; display: flex; align-items: center; gap: 8px; }
+  .bank-row-value.account-num { font-family: monospace; font-size: 16px; font-weight: 700; color: var(--color-indigo-deep); letter-spacing: 0.08em; }
+  .copy-btn {
+    background: var(--color-indigo-wash); color: var(--color-indigo-deep);
+    border: none; border-radius: var(--radius-sm);
+    font-size: 11px; font-weight: 700; padding: 4px 8px;
+    cursor: pointer; transition: background 0.15s; white-space: nowrap;
+    min-height: 28px;
+  }
+  .copy-btn:hover { background: var(--color-indigo-mid); color: white; }
+
+  /* ── Transfer content highlight ── */
+  .transfer-content-box {
+    background: var(--color-gold-light);
+    border: 1.5px dashed var(--color-gold);
+    border-radius: var(--radius-md);
+    padding: 12px 16px;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    flex-wrap: wrap;
+  }
+  .transfer-content-label { font-size: 12px; color: #7A5F00; font-weight: 600; }
+  .transfer-content-value { font-family: monospace; font-size: 16px; font-weight: 700; color: var(--color-indigo-deep); }
+
+  /* ── Steps instruction ── */
+  .instruction-steps { display: flex; flex-direction: column; gap: 12px; }
+  .instruction-step { display: flex; gap: 12px; align-items: flex-start; }
+  .instruction-num {
+    width: 24px; height: 24px; border-radius: 50%;
+    background: var(--color-indigo-deep); color: white;
+    font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; margin-top: 1px;
+  }
+  .instruction-text { font-size: 13px; color: var(--color-charcoal); line-height: 1.6; }
+  .instruction-text strong { color: var(--color-indigo-deep); }
+
+  /* ── Confirm transfer button ── */
+  .confirm-section {
+    background: var(--color-warm-white);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: 20px 16px;
+    box-shadow: var(--shadow-sm);
+    margin-bottom: 16px;
+    text-align: center;
+  }
+  .confirm-icon { font-size: 40px; margin-bottom: 12px; }
+  .confirm-title { font-family: var(--font-display); font-size: 18px; font-weight: 700; color: var(--color-charcoal); margin-bottom: 8px; }
+  .confirm-desc  { font-size: 13px; color: var(--color-slate); line-height: 1.7; margin-bottom: 20px; }
+  .btn-confirm {
+    width: 100%; background: var(--color-success); color: white;
+    font-family: var(--font-body); font-weight: 700; font-size: 16px;
+    padding: 16px 24px; border-radius: var(--radius-md);
+    border: none; cursor: pointer; min-height: 54px;
+    transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .btn-confirm:hover { background: #1B5E20; transform: translateY(-1px); box-shadow: 0 4px 16px rgba(46,125,50,0.3); }
+  .confirm-subtext { font-size: 11px; color: var(--color-mist); margin-top: 10px; line-height: 1.6; }
+
+  /* ── Help note ── */
+  .help-note {
+    background: var(--color-indigo-wash);
+    border-radius: var(--radius-md);
+    padding: 12px 16px;
+    font-size: 12px; color: var(--color-slate); line-height: 1.7;
+  }
+  .help-note strong { color: var(--color-indigo-deep); }
+</style>
+</head>
+<body>
+
+<!-- ── Header ──────────────────────────────────────── -->
+<header class="site-header">
+  <div class="header-inner">
+    <a href="checkout.html" class="header-back">← Quay lại</a>
+    <span class="header-title">Thanh Toán</span>
+    <span class="header-step">Bước 2/3</span>
+  </div>
+</header>
+
+<!-- ── Progress ──────────────────────────────────── -->
+<div class="checkout-progress">
+  <div class="progress-inner">
+    <ol class="progress-steps">
+      <li class="progress-step done">
+        <div class="step-dot">✓</div>
+        <span class="step-label">Thông tin</span>
+      </li>
+      <li class="progress-step active" aria-current="step">
+        <div class="step-dot">2</div>
+        <span class="step-label">Thanh toán</span>
+      </li>
+      <li class="progress-step">
+        <div class="step-dot">3</div>
+        <span class="step-label">Xác nhận</span>
+      </li>
+    </ol>
+  </div>
+</div>
+
+<main>
+  <div class="page-inner">
+
+    <!-- ╔══════════════════════════════════════════════════════╗ -->
+    <!-- ║  COUNTDOWN — 48h window, orange warning bar         ║ -->
+    <!-- ╚══════════════════════════════════════════════════════╝ -->
+    <div class="countdown-bar" role="timer" aria-live="polite" aria-label="Thời gian còn lại để thanh toán">
+      <span class="countdown-icon" aria-hidden="true">⏱</span>
+      <p class="countdown-text">Đơn hàng sẽ bị hủy sau khi hết thời gian chờ thanh toán</p>
+      <span class="countdown-timer" aria-label="47 giờ 23 phút còn lại">47:23:15</span>
+    </div>
+
+    <!-- ╔══════════════════════════════════════════════════════╗ -->
+    <!-- ║  ORDER SUMMARY STRIP — ID + total amount            ║ -->
+    <!-- ╚══════════════════════════════════════════════════════╝ -->
+    <div class="order-strip" aria-label="Thông tin đơn hàng">
+      <div class="order-strip-id">
+        Mã đơn hàng: <strong>#SIE-2026-0042</strong>
+      </div>
+      <div class="order-strip-total">
+        <span>Cần chuyển</span>320.000 ₫
+      </div>
+    </div>
+
+    <!-- ╔══════════════════════════════════════════════════════╗ -->
+    <!-- ║  VIETQR CODE — Placeholder, generated server-side  ║ -->
+    <!-- ║  Scan → bank app auto-fills amount + content       ║ -->
+    <!-- ╚══════════════════════════════════════════════════════╝ -->
+    <div class="payment-card">
+      <div class="payment-card-header">
+        <div class="payment-card-icon" aria-hidden="true">📱</div>
+        <h2 class="payment-card-title">Quét mã VietQR</h2>
+      </div>
+      <div class="payment-card-body">
+        <div class="qr-section">
+          <!-- QR placeholder: actual QR generated server-side from VietQR API -->
+          <div class="qr-frame" role="img" aria-label="Mã QR thanh toán VietQR — quét bằng ứng dụng ngân hàng">
+            <div class="qr-grid" aria-hidden="true">
+              <!-- 64 cells simulating QR pattern -->
+              <div class="qr-cell"></div><div class="qr-cell"></div><div class="qr-cell"></div><div class="qr-cell"></div><div class="qr-cell"></div><div class="qr-cell"></div><div class="qr-cell"></div><div class="qr-cell"></div>
+              <div class="qr-cell"></div><div class="qr-cell"></div><div class="qr-cell"></div><div class="qr-cell"></div><div class="qr-cell"></div><div class="qr-cell"></div><div class="qr-cell"></div><div class="qr-cell"></div>
+              <div class="qr-cell"></div><div class="qr-cell"></div><div class="qr-cell"></div><div class="qr-cell"></div><div class="qr-cell"></div><div class="qr-cell"></div><div class="qr-cell"></div><div class="qr-cell"></div>
+              <div class="qr-cell"></div><div class="qr-cell"></div><div class="qr-cell"></div><div class="qr-cell"></div><div class="qr-cell"></div><div class="qr-cell"></div><div class="qr-cell"></div><div class="qr-cell"></div>
+              <div class="qr-cell"></div><div class="qr-cell"></div><div class="qr-cell"></div><div class="qr-cell"></div><div class="qr-cell"></div><div class="qr-cell"></div><div class="qr-cell"></div><div class="qr-cell"></div>
+              <div class="qr-cell"></div><div class="qr-cell"></div><div class="qr-cell"></div><div class="qr-cell"></div><div class="qr-cell"></div><div class="qr-cell"></div><div class="qr-cell"></div><div class="qr-cell"></div>
+              <div class="qr-cell"></div><div class="qr-cell"></div><div class="qr-cell"></div><div class="qr-cell"></div><div class="qr-cell"></div><div class="qr-cell"></div><div class="qr-cell"></div><div class="qr-cell"></div>
+              <div class="qr-cell"></div><div class="qr-cell"></div><div class="qr-cell"></div><div class="qr-cell"></div><div class="qr-cell"></div><div class="qr-cell"></div><div class="qr-cell"></div><div class="qr-cell"></div>
+            </div>
+            <span class="qr-vietqr-badge">VietQR</span>
+          </div>
+          <p class="qr-label">Mở app ngân hàng → Quét QR<br>Số tiền và nội dung tự động điền</p>
+          <button class="qr-download" type="button" aria-label="Tải mã QR về máy">
+            ↓ Tải mã QR
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ╔══════════════════════════════════════════════════════╗ -->
+    <!-- ║  BANK DETAILS — Manual transfer fallback            ║ -->
+    <!-- ║  Each field has copy button for mobile UX           ║ -->
+    <!-- ╚══════════════════════════════════════════════════════╝ -->
+    <div class="payment-card">
+      <div class="payment-card-header">
+        <div class="payment-card-icon" aria-hidden="true">🏦</div>
+        <h2 class="payment-card-title">Chuyển khoản thủ công</h2>
+      </div>
+      <div class="payment-card-body">
+        <div class="bank-details">
+          <div class="bank-row">
+            <span class="bank-row-label">Ngân hàng</span>
+            <span class="bank-row-value">MB Bank (Ngân hàng Quân Đội)</span>
+          </div>
+          <div class="bank-row">
+            <span class="bank-row-label">Tên tài khoản</span>
+            <span class="bank-row-value">
+              NGUYEN THI MAI ANH
+              <button class="copy-btn" type="button" onclick="this.textContent='Đã chép!'" aria-label="Sao chép tên tài khoản">Chép</button>
+            </span>
+          </div>
+          <div class="bank-row">
+            <span class="bank-row-label">Số tài khoản</span>
+            <span class="bank-row-value account-num">
+              0123 4567 890
+              <button class="copy-btn" type="button" onclick="this.textContent='Đã chép!'" aria-label="Sao chép số tài khoản">Chép</button>
+            </span>
+          </div>
+          <div class="bank-row">
+            <span class="bank-row-label">Số tiền</span>
+            <span class="bank-row-value" style="font-size:18px;font-weight:700;color:var(--color-indigo-deep);">
+              320.000 ₫
+              <button class="copy-btn" type="button" onclick="this.textContent='Đã chép!'" aria-label="Sao chép số tiền">Chép</button>
+            </span>
+          </div>
+        </div>
+
+        <!-- Transfer content — most important field -->
+        <div style="margin-top:16px;">
+          <p style="font-size:12px;font-weight:700;color:var(--color-charcoal);margin-bottom:8px;">
+            Nội dung chuyển khoản <span style="color:#C62828;">*</span>
+          </p>
+          <div class="transfer-content-box">
+            <div>
+              <p class="transfer-content-label">Ghi chính xác nội dung này:</p>
+              <p class="transfer-content-value">SIE 2026 0042</p>
+            </div>
+            <button class="copy-btn" type="button" onclick="this.textContent='Đã chép!'" style="font-size:13px;padding:8px 14px;" aria-label="Sao chép nội dung chuyển khoản">
+              Sao chép
+            </button>
+          </div>
+          <p style="font-size:11px;color:#C62828;margin-top:8px;line-height:1.5;">
+            ⚠ Ghi sai nội dung sẽ làm chậm quá trình xác nhận đơn hàng
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ╔══════════════════════════════════════════════════════╗ -->
+    <!-- ║  INSTRUCTIONS — numbered steps                     ║ -->
+    <!-- ╚══════════════════════════════════════════════════════╝ -->
+    <div class="payment-card">
+      <div class="payment-card-header">
+        <div class="payment-card-icon" aria-hidden="true">📋</div>
+        <h2 class="payment-card-title">Hướng dẫn thanh toán</h2>
+      </div>
+      <div class="payment-card-body">
+        <ol class="instruction-steps">
+          <li class="instruction-step">
+            <div class="instruction-num" aria-hidden="true">1</div>
+            <p class="instruction-text">Mở app ngân hàng → <strong>Quét mã QR</strong> hoặc chuyển khoản thủ công theo thông tin trên</p>
+          </li>
+          <li class="instruction-step">
+            <div class="instruction-num" aria-hidden="true">2</div>
+            <p class="instruction-text">Nhập số tiền <strong>320.000 ₫</strong> và nội dung chuyển khoản <strong>SIE 2026 0042</strong></p>
+          </li>
+          <li class="instruction-step">
+            <div class="instruction-num" aria-hidden="true">3</div>
+            <p class="instruction-text">Nhấn <strong>"Tôi đã chuyển khoản"</strong> bên dưới để thông báo cho đội SIE kiểm tra</p>
+          </li>
+          <li class="instruction-step">
+            <div class="instruction-num" aria-hidden="true">4</div>
+            <p class="instruction-text">Đội sẽ xác nhận trong vòng <strong>24 giờ</strong> (ngày làm việc) và gửi email xác nhận</p>
+          </li>
+        </ol>
+      </div>
+    </div>
+
+    <!-- ╔══════════════════════════════════════════════════════╗ -->
+    <!-- ║  CONFIRM BUTTON — "I've transferred"               ║ -->
+    <!-- ║  Green, full-width, prominent CTA                  ║ -->
+    <!-- ╚══════════════════════════════════════════════════════╝ -->
+    <div class="confirm-section">
+      <div class="confirm-icon" aria-hidden="true">✅</div>
+      <h3 class="confirm-title">Đã chuyển khoản xong?</h3>
+      <p class="confirm-desc">
+        Nhấn nút bên dưới sau khi bạn đã hoàn thành chuyển khoản.
+        Chúng mình sẽ xác nhận đơn hàng sớm nhất có thể.
+      </p>
+      <button class="btn-confirm" type="button" onclick="window.location='order-status.html'">
+        ✓ Tôi đã chuyển khoản
+      </button>
+      <p class="confirm-subtext">
+        Sau khi nhấn xác nhận, bạn sẽ nhận được email với mã đơn hàng để theo dõi trạng thái.
+      </p>
+    </div>
+
+    <!-- Help note -->
+    <div class="help-note" role="note">
+      <strong>Cần hỗ trợ?</strong> Nhắn tin cho đội SIE qua Facebook
+      <a href="#" style="color:var(--color-indigo-light);">facebook.com/sieyosakoi</a>
+      hoặc email <a href="mailto:sieyosakoi@gmail.com" style="color:var(--color-indigo-light);">sieyosakoi@gmail.com</a>
+      kèm mã đơn hàng <strong>#SIE-2026-0042</strong>.
+    </div>
+
+  </div>
+</main>
+
+</body>
+</html>

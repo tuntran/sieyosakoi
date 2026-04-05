@@ -1,0 +1,211 @@
+---
+import { env } from 'cloudflare:workers';
+import { getOrderById } from '../lib/db';
+import '../styles/global.css';
+
+const db = env.DB;
+const orderId = Astro.url.searchParams.get('order');
+
+if (!orderId) return Astro.redirect('/');
+
+const order = await getOrderById(db, orderId);
+if (!order) return Astro.redirect('/');
+
+function fmtVnd(n: number) {
+  return n.toLocaleString('vi-VN') + 'đ';
+}
+
+const deliveryLabels: Record<string, string> = {
+  pickup_practice:     'Nhận tại buổi tập',
+  pickup_festival_sat: 'Liên hoan Yosakoi — Thứ 7 (25/4)',
+  pickup_festival_sun: 'Liên hoan Yosakoi — Chủ nhật (26/4)',
+  ship_after_27apr:    'Giao hàng sau 27/4',
+};
+
+// Build VietQR URL
+const addInfo = encodeURIComponent(`sie 2026 ${order.id} ${order.phone}`);
+const accountName = encodeURIComponent('Vu Khanh Chi');
+const vietQrUrl = `https://img.vietqr.io/image/TCB-19040070626015-compact2.png?amount=${order.total}&addInfo=${addInfo}&accountName=${accountName}`;
+---
+
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Thanh toán — {order.id} · SIE Yosakoi Shop</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container" style="max-width:900px">
+    <a href="/" class="site-logo">🎏 SIE Yosakoi Shop</a>
+  </div>
+</header>
+
+<!-- ── Payment hero ─────────────────────────────────── -->
+<div class="payment-hero">
+  <h1 class="payment-heading">Cảm ơn bạn đã đặt hàng! 🎉</h1>
+  <p class="payment-subhead">Mã đơn: <strong style="color:var(--navy-deep)">{order.id}</strong> · Vui lòng chuyển khoản để xác nhận đơn hàng.</p>
+</div>
+
+<main>
+  <div class="container" style="max-width:900px">
+    <div class="payment-grid">
+
+      <!-- Left: bank details + QR -->
+      <div>
+        <div class="form-card">
+          <div class="form-card-title">💳 Thông tin chuyển khoản</div>
+
+          <div class="bank-detail-row">
+            <span class="bank-detail-label">Ngân hàng</span>
+            <span class="bank-detail-value">Techcombank (TCB)</span>
+          </div>
+          <div class="bank-detail-row">
+            <span class="bank-detail-label">Số tài khoản</span>
+            <span class="bank-detail-value">
+              <span id="account-num">19040070626015</span>
+              <button class="copy-btn" data-copy="19040070626015">Sao chép</button>
+            </span>
+          </div>
+          <div class="bank-detail-row">
+            <span class="bank-detail-label">Chủ tài khoản</span>
+            <span class="bank-detail-value">Vũ Khánh Chi</span>
+          </div>
+          <div class="bank-detail-row">
+            <span class="bank-detail-label">Số tiền</span>
+            <span class="bank-detail-value" style="color:var(--koi-red);font-size:1.1rem">{fmtVnd(order.total)}</span>
+          </div>
+          <div class="bank-detail-row" style="border-bottom:none">
+            <span class="bank-detail-label">Nội dung CK</span>
+            <span class="bank-detail-value">
+              <span id="transfer-content">sie 2026 {order.id} {order.phone}</span>
+              <button class="copy-btn" data-copy={`sie 2026 ${order.id} ${order.phone}`}>Sao chép</button>
+            </span>
+          </div>
+        </div>
+
+        <div class="qr-wrap" style="margin-top:1.5rem">
+          <img
+            src={vietQrUrl}
+            alt="VietQR chuyển khoản"
+            width="220"
+            loading="lazy"
+          />
+          <p style="font-size:0.8rem;color:var(--slate);text-align:center">Quét QR bằng app ngân hàng để chuyển tiền nhanh</p>
+        </div>
+      </div>
+
+      <!-- Right: order summary -->
+      <div>
+        <div class="form-card">
+          <div class="form-card-title">📋 Chi tiết đơn hàng</div>
+
+          <div class="order-info-grid" style="display:grid;grid-template-columns:1fr;gap:10px;margin-bottom:16px">
+            <div>
+              <div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--slate);font-weight:600">Khách hàng</div>
+              <div style="font-weight:600">{order.customer_name}</div>
+            </div>
+            <div>
+              <div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--slate);font-weight:600">Số điện thoại</div>
+              <div style="font-weight:600">{order.phone}</div>
+            </div>
+            <div>
+              <div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--slate);font-weight:600">Nhận hàng</div>
+              <div style="font-weight:600">{deliveryLabels[order.delivery_method] ?? order.delivery_method}</div>
+            </div>
+            {order.address && (
+              <div>
+                <div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--slate);font-weight:600">Địa chỉ</div>
+                <div style="font-weight:600">{order.address}</div>
+              </div>
+            )}
+          </div>
+
+          <hr style="border:none;border-top:1px dashed var(--border);margin-bottom:12px" />
+
+          <!-- Items -->
+          <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px">
+            {order.items.map(item => (
+              <div style="display:flex;justify-content:space-between;font-size:0.875rem">
+                <div>
+                  <span style="font-weight:600">{item.name}</span>
+                  {item.color && <span style="color:var(--slate)"> · {item.color}</span>}
+                  {item.size && <span style="color:var(--slate)"> · {item.size}</span>}
+                  <span style="color:var(--slate)"> × {item.qty}</span>
+                </div>
+                <div style="font-weight:600;white-space:nowrap;margin-left:12px">
+                  {fmtVnd(item.unit_price * item.qty)}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <hr style="border:none;border-top:1px dashed var(--border);margin-bottom:12px" />
+
+          <div style="display:flex;justify-content:space-between;font-size:0.875rem;color:var(--slate);margin-bottom:4px">
+            <span>Tạm tính</span><span>{fmtVnd(order.subtotal)}</span>
+          </div>
+          {order.shipping_fee > 0 && (
+            <div style="display:flex;justify-content:space-between;font-size:0.875rem;color:var(--slate);margin-bottom:4px">
+              <span>Phí ship</span><span>{fmtVnd(order.shipping_fee)}</span>
+            </div>
+          )}
+          <div style="display:flex;justify-content:space-between;font-weight:700;font-size:1.1rem;color:var(--koi-red);margin-top:8px">
+            <span>Tổng cộng</span><span>{fmtVnd(order.total)}</span>
+          </div>
+
+          {order.notes && (
+            <div style="margin-top:12px;font-size:0.85rem;background:var(--bg-offwhite);padding:10px 12px;border-radius:var(--radius-sm);color:var(--slate)">
+              <strong>Ghi chú:</strong> {order.notes}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+
+    <!-- Note -->
+    <div class="payment-note">
+      ℹ️ <strong>Lưu ý:</strong> Đơn hàng sẽ được xác nhận sau khi admin kiểm tra chuyển khoản.
+      Nếu cần hỗ trợ, liên hệ qua fanpage SIE Yosakoi.
+    </div>
+  </div>
+</main>
+
+<!-- ── Footer ────────────────────────────────────────── -->
+<div class="payment-footer">
+  🎏 Hẹn gặp lại tại Liên hoan Yosakoi Việt Nam 2026! 🎏
+</div>
+
+<script>
+  // Clear cart after order placed
+  localStorage.removeItem('sie_cart');
+
+  // Copy-to-clipboard buttons
+  document.querySelectorAll<HTMLButtonElement>('.copy-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const text = btn.dataset.copy ?? '';
+      try {
+        await navigator.clipboard.writeText(text);
+        const orig = btn.textContent;
+        btn.textContent = '✓ Đã sao chép';
+        btn.style.background = 'var(--koi-teal)';
+        btn.style.color = '#fff';
+        setTimeout(() => { btn.textContent = orig; btn.style.cssText = ''; }, 2000);
+      } catch {
+        // Fallback for older browsers
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+      }
+    });
+  });
+</script>
+
+</body>
+</html>

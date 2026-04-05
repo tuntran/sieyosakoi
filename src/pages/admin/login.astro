@@ -1,0 +1,89 @@
+---
+import { env } from 'cloudflare:workers';
+import { verifyPassword, createSession } from '../../lib/auth';
+import '../../styles/admin.css';
+
+// Redirect if already logged in
+const token = Astro.cookies.get('session')?.value;
+if (token) {
+  const { validateSession } = await import('../../lib/auth');
+  const kv = env.KV;
+  if (await validateSession(kv, token)) return Astro.redirect('/admin');
+}
+
+let errorMsg = '';
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const username = form.get('username')?.toString() ?? '';
+  const password = form.get('password')?.toString() ?? '';
+  const kv = env.KV;
+
+  const storedUsername = await kv.get('admin_username');
+  const storedHash = await kv.get('admin_password');
+
+  if (
+    username === storedUsername &&
+    storedHash &&
+    (await verifyPassword(password, storedHash))
+  ) {
+    const sessionToken = await createSession(kv);
+    Astro.cookies.set('session', sessionToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'lax',
+      maxAge: 604800,
+      path: '/',
+    });
+    return Astro.redirect('/admin');
+  }
+  errorMsg = 'Tên đăng nhập hoặc mật khẩu không đúng.';
+}
+
+const hasError = Astro.url.searchParams.get('error') === '1' || errorMsg;
+---
+
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Đăng nhập — SIE Admin</title>
+</head>
+<body>
+<div class="login-page">
+  <div class="login-card">
+    <div class="login-logo">
+      <div style="font-size:2rem;margin-bottom:6px">🎏</div>
+      <div class="login-logo-text">SIE Yosakoi</div>
+      <div class="login-logo-sub">Admin Panel</div>
+    </div>
+
+    <h1 class="login-title">Đăng nhập</h1>
+
+    {(errorMsg || hasError) && (
+      <div class="alert alert-error">{errorMsg || 'Tên đăng nhập hoặc mật khẩu không đúng.'}</div>
+    )}
+
+    <form method="POST" action="/admin/login">
+      <div class="form-group">
+        <label class="form-label" for="username">Tên đăng nhập</label>
+        <input class="form-input" type="text" id="username" name="username"
+          required autocomplete="username" autofocus />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="password">Mật khẩu</label>
+        <input class="form-input" type="password" id="password" name="password"
+          required autocomplete="current-password" />
+      </div>
+      <button type="submit" class="btn btn-primary" style="width:100%;margin-top:8px">
+        Đăng nhập →
+      </button>
+    </form>
+
+    <div style="margin-top:16px;text-align:center">
+      <a href="/" style="font-size:0.8rem;color:var(--text-muted)">← Về trang chủ</a>
+    </div>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SIE Yosakoi Shop — Tra Cứu Đơn Hàng</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Old+Mincho:wght@400;600;700;900&family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --color-indigo-deep:  #1B3A6B;
+    --color-indigo-mid:   #2E5299;
+    --color-indigo-light: #4A72C4;
+    --color-indigo-wash:  #E8EEF8;
+    --color-offwhite:     #F8F6F2;
+    --color-warm-white:   #FDFCFA;
+    --color-charcoal:     #2C2C2C;
+    --color-slate:        #5A5A5A;
+    --color-mist:         #9A9A9A;
+    --color-border:       #E2DDD6;
+    --color-gold:         #C9A84C;
+    --color-gold-light:   #F5ECC7;
+    --color-sakura:       #E8B4B8;
+    --color-success:      #2E7D32;
+    --color-success-bg:   #E8F5E9;
+    --color-warning:      #E65100;
+    --color-warning-bg:   #FFF3E0;
+    --color-error:        #C62828;
+    --color-error-bg:     #FFEBEE;
+    --font-display: 'Zen Old Mincho', serif;
+    --font-body:    'Noto Sans JP', sans-serif;
+    --radius-sm: 4px; --radius-md: 8px; --radius-lg: 12px; --radius-full: 9999px;
+    --shadow-sm: 0 2px 8px rgba(27,58,107,0.08);
+    --shadow-md: 0 4px 16px rgba(27,58,107,0.12);
+  }
+  body {
+    font-family: var(--font-body);
+    background: var(--color-offwhite);
+    color: var(--color-charcoal);
+    line-height: 1.7;
+    min-height: 100vh;
+  }
+
+  /* ── Header ── */
+  .site-header { background: var(--color-indigo-deep); box-shadow: var(--shadow-md); }
+  .header-inner {
+    max-width: 768px; margin: 0 auto; padding: 0 16px;
+    display: flex; align-items: center; justify-content: space-between; height: 56px;
+  }
+  .header-logo { display: flex; align-items: center; gap: 10px; }
+  .logo-mark {
+    width: 34px; height: 34px; border-radius: 50%;
+    background: var(--color-gold); display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-display); font-size: 13px; font-weight: 900; color: var(--color-indigo-deep);
+  }
+  .logo-text { font-family: var(--font-display); font-size: 15px; font-weight: 700; color: #fff; }
+  .header-home {
+    font-size: 13px; color: rgba(255,255,255,0.7); font-weight: 500;
+    display: flex; align-items: center; gap: 6px;
+  }
+
+  /* ── Page wrapper ── */
+  .page-inner { max-width: 768px; margin: 0 auto; padding: 24px 16px 48px; }
+
+  /* ── Search section ── */
+  .search-card {
+    background: var(--color-warm-white);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+    margin-bottom: 24px;
+  }
+  .search-card-header {
+    background: var(--color-indigo-deep);
+    padding: 20px 20px 24px;
+    position: relative; overflow: hidden;
+  }
+  /* subtle wave overlay */
+  .search-card-header::before {
+    content: '';
+    position: absolute; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Cpath d='M0 20 Q10 0 20 20 Q30 0 40 20' fill='none' stroke='%23F8F6F2' stroke-width='1'/%3E%3C/svg%3E");
+    background-size: 40px 40px; opacity: 0.05; pointer-events: none;
+  }
+  .search-eyebrow {
+    font-size: 11px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--color-gold); margin-bottom: 6px;
+  }
+  .search-title {
+    font-family: var(--font-display); font-size: 22px; font-weight: 700; color: #fff;
+    position: relative; z-index: 1;
+  }
+  .search-body { padding: 20px; }
+  .search-form { display: flex; gap: 10px; flex-direction: column; }
+  .search-input-row { display: flex; gap: 10px; }
+  .search-input {
+    flex: 1; background: var(--color-offwhite);
+    border: 1.5px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: 12px 16px;
+    font-family: var(--font-body); font-size: 16px; color: var(--color-charcoal);
+    transition: border-color 0.15s, box-shadow 0.15s; min-height: 50px;
+    letter-spacing: 0.04em;
+  }
+  .search-input:focus {
+    border-color: var(--color-indigo-light);
+    box-shadow: 0 0 0 3px rgba(74,114,196,0.15); outline: none;
+    background: var(--color-warm-white);
+  }
+  .search-input::placeholder { color: var(--color-mist); letter-spacing: 0; }
+  .btn-search {
+    background: var(--color-indigo-deep); color: white;
+    font-weight: 700; font-size: 15px; padding: 12px 20px;
+    border-radius: var(--radius-md); border: none; cursor: pointer;
+    min-height: 50px; white-space: nowrap;
+    transition: background 0.2s;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .btn-search:hover { background: var(--color-indigo-mid); }
+  .search-hint { font-size: 12px; color: var(--color-mist); }
+
+  /* ── Result area ── */
+  .result-area { display: flex; flex-direction: column; gap: 16px; }
+
+  /* ── Order header card ── */
+  .order-header-card {
+    background: var(--color-warm-white);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+  }
+  .order-header-top {
+    background: linear-gradient(135deg, var(--color-indigo-deep) 0%, #0D2347 100%);
+    padding: 16px 20px;
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  }
+  .order-id-block {}
+  .order-id-label { font-size: 11px; color: rgba(255,255,255,0.5); letter-spacing: 0.12em; text-transform: uppercase; }
+  .order-id-value { font-family: monospace; font-size: 22px; font-weight: 700; color: #fff; letter-spacing: 0.04em; }
+  .order-date { font-size: 12px; color: rgba(255,255,255,0.55); margin-top: 4px; }
+  .order-status-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 14px; border-radius: var(--radius-full);
+    font-size: 12px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;
+    flex-shrink: 0;
+  }
+  .status-confirmed { background: rgba(46,125,50,0.2); color: #81C784; border: 1px solid rgba(46,125,50,0.3); }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+
+  .order-summary-row {
+    padding: 14px 20px;
+    display: flex; gap: 16px; flex-wrap: wrap;
+    border-bottom: 1px solid var(--color-border);
+  }
+  .order-meta-item { display: flex; flex-direction: column; gap: 2px; }
+  .order-meta-label { font-size: 11px; color: var(--color-mist); font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
+  .order-meta-value { font-size: 14px; font-weight: 600; color: var(--color-charcoal); }
+  .order-total-row { padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; }
+  .order-total-label { font-size: 13px; color: var(--color-slate); }
+  .order-total-value { font-size: 20px; font-weight: 700; color: var(--color-indigo-deep); }
+
+  /* ── Status Timeline ── */
+  .timeline-card {
+    background: var(--color-warm-white);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+  }
+  .timeline-card-header {
+    padding: 14px 20px; border-bottom: 1px solid var(--color-border);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .timeline-card-icon {
+    width: 32px; height: 32px; border-radius: var(--radius-md);
+    background: var(--color-indigo-wash); display: flex; align-items: center; justify-content: center; font-size: 16px;
+  }
+  .timeline-card-title { font-family: var(--font-display); font-size: 15px; font-weight: 700; color: var(--color-indigo-deep); }
+  .timeline { padding: 20px; display: flex; flex-direction: column; gap: 0; }
+
+  /* Each timeline step */
+  .timeline-step { display: flex; gap: 16px; position: relative; padding-bottom: 24px; }
+  .timeline-step:last-child { padding-bottom: 0; }
+
+  /* Vertical connector line */
+  .timeline-step:not(:last-child) .timeline-left::after {
+    content: ''; position: absolute;
+    left: 15px; top: 32px;
+    width: 2px; height: calc(100% - 8px);
+    background: var(--color-border);
+  }
+  .timeline-step.done:not(:last-child) .timeline-left::after  { background: var(--color-indigo-light); }
+  .timeline-step.active:not(:last-child) .timeline-left::after {
+    background: linear-gradient(to bottom, var(--color-indigo-light), var(--color-border));
+  }
+
+  .timeline-left { position: relative; flex-shrink: 0; display: flex; flex-direction: column; align-items: center; }
+  .timeline-icon {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: var(--color-border); color: var(--color-mist);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; flex-shrink: 0; z-index: 1; position: relative;
+    transition: background 0.3s, color 0.3s;
+  }
+  .timeline-step.done   .timeline-icon { background: var(--color-indigo-light); color: white; }
+  .timeline-step.active .timeline-icon { background: var(--color-indigo-deep); color: white; box-shadow: 0 0 0 4px var(--color-indigo-wash); }
+
+  .timeline-content { flex: 1; padding-top: 4px; }
+  .timeline-step-name {
+    font-size: 15px; font-weight: 700;
+    color: var(--color-mist);
+    transition: color 0.3s;
+  }
+  .timeline-step.done   .timeline-step-name { color: var(--color-indigo-deep); }
+  .timeline-step.active .timeline-step-name { color: var(--color-indigo-deep); }
+  .timeline-step-desc { font-size: 12px; color: var(--color-mist); line-height: 1.6; margin-top: 2px; }
+  .timeline-step.done  .timeline-step-desc { color: var(--color-slate); }
+  .timeline-step.active .timeline-step-desc { color: var(--color-slate); }
+  .timeline-step-time { font-size: 11px; color: var(--color-mist); margin-top: 4px; font-family: monospace; }
+  .timeline-step.done  .timeline-step-time { color: var(--color-indigo-light); }
+  .timeline-step.active .timeline-step-time { color: var(--color-gold); font-weight: 700; }
+
+  /* Active step pulsing indicator */
+  .timeline-step.active .timeline-icon::before {
+    content: ''; position: absolute;
+    width: 100%; height: 100%; border-radius: 50%;
+    background: var(--color-indigo-deep); opacity: 0.25;
+    animation: pulse-ring 2s infinite;
+  }
+  @keyframes pulse-ring {
+    0%   { transform: scale(1); opacity: 0.25; }
+    70%  { transform: scale(1.6); opacity: 0; }
+    100% { transform: scale(1.6); opacity: 0; }
+  }
+
+  /* ── Order Items Card ── */
+  .items-card {
+    background: var(--color-warm-white);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+  }
+  .items-card-header {
+    padding: 14px 20px; border-bottom: 1px solid var(--color-border);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .items-card-title { font-family: var(--font-display); font-size: 15px; font-weight: 700; color: var(--color-indigo-deep); }
+  .order-items { padding: 12px 20px; display: flex; flex-direction: column; gap: 12px; }
+  .order-item { display: flex; gap: 12px; align-items: flex-start; padding-bottom: 12px; border-bottom: 1px solid var(--color-border); }
+  .order-item:last-child { border-bottom: none; padding-bottom: 0; }
+  .item-thumb { width: 52px; height: 40px; border-radius: var(--radius-sm); flex-shrink: 0; border: 1px solid var(--color-border); overflow: hidden; }
+  .item-name  { font-size: 14px; font-weight: 600; color: var(--color-charcoal); }
+  .item-meta  { font-size: 12px; color: var(--color-mist); margin-top: 2px; }
+  .item-right { margin-left: auto; text-align: right; flex-shrink: 0; }
+  .item-qty   { font-size: 12px; color: var(--color-slate); }
+  .item-price { font-size: 14px; font-weight: 700; color: var(--color-indigo-deep); }
+
+  /* ── Customer Info Card ── */
+  .info-card {
+    background: var(--color-warm-white);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+  }
+  .info-card-header { padding: 14px 20px; border-bottom: 1px solid var(--color-border); display: flex; align-items: center; gap: 10px; }
+  .info-card-title  { font-family: var(--font-display); font-size: 15px; font-weight: 700; color: var(--color-indigo-deep); }
+  .info-rows { padding: 14px 20px; display: flex; flex-direction: column; gap: 10px; }
+  .info-row  { display: flex; gap: 12px; }
+  .info-row-label { font-size: 12px; color: var(--color-mist); font-weight: 600; min-width: 100px; flex-shrink: 0; }
+  .info-row-value { font-size: 14px; color: var(--color-charcoal); }
+
+  /* ── Action buttons ── */
+  .action-buttons { display: flex; gap: 10px; flex-direction: column; }
+  @media (min-width: 400px) { .action-buttons { flex-direction: row; } }
+  .btn-secondary {
+    flex: 1; background: transparent; color: var(--color-indigo-deep);
+    border: 2px solid var(--color-indigo-deep);
+    font-weight: 700; font-size: 14px; padding: 12px 16px;
+    border-radius: var(--radius-md); cursor: pointer; min-height: 48px;
+    transition: background 0.2s; text-align: center;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .btn-secondary:hover { background: var(--color-indigo-wash); }
+  .btn-help {
+    flex: 1; background: transparent; color: var(--color-slate);
+    border: 1.5px solid var(--color-border);
+    font-weight: 600; font-size: 14px; padding: 12px 16px;
+    border-radius: var(--radius-md); cursor: pointer; min-height: 48px;
+    transition: background 0.2s; text-align: center;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .btn-help:hover { background: var(--color-offwhite); }
+</style>
+</head>
+<body>
+
+<!-- ── Header ── -->
+<header class="site-header">
+  <div class="header-inner">
+    <a href="index.html" class="header-logo" aria-label="Trang chủ SIE Yosakoi Shop">
+      <div class="logo-mark">SIE</div>
+      <span class="logo-text">SIE Yosakoi Shop</span>
+    </a>
+    <a href="index.html" class="header-home" aria-label="Về trang chủ">
+      Trang chủ →
+    </a>
+  </div>
+</header>
+
+<main>
+  <div class="page-inner">
+
+    <!-- ╔══════════════════════════════════════════════════════╗ -->
+    <!-- ║  SEARCH SECTION — lookup by order ID               ║ -->
+    <!-- ╚══════════════════════════════════════════════════════╝ -->
+    <div class="search-card">
+      <div class="search-card-header">
+        <p class="search-eyebrow">Tra Cứu Đơn Hàng</p>
+        <h1 class="search-title">Kiểm tra trạng thái đơn</h1>
+      </div>
+      <div class="search-body">
+        <form class="search-form" role="search" aria-label="Tìm kiếm đơn hàng">
+          <div class="search-input-row">
+            <label for="order-id" class="sr-only">Mã đơn hàng</label>
+            <input
+              type="text" id="order-id" class="search-input"
+              value="SIE-2026-0042"
+              placeholder="Ví dụ: SIE-2026-0042"
+              autocomplete="off" spellcheck="false"
+              aria-label="Nhập mã đơn hàng"
+            >
+            <button class="btn-search" type="submit" aria-label="Tìm kiếm">
+              🔍 Tìm
+            </button>
+          </div>
+          <p class="search-hint">Mã đơn hàng được gửi qua email sau khi đặt hàng</p>
+        </form>
+      </div>
+    </div>
+
+    <!-- ╔══════════════════════════════════════════════════════╗ -->
+    <!-- ║  RESULT — displayed after search                   ║ -->
+    <!-- ╚══════════════════════════════════════════════════════╝ -->
+    <div class="result-area" role="region" aria-label="Kết quả tra cứu">
+
+      <!-- Order header -->
+      <div class="order-header-card">
+        <div class="order-header-top">
+          <div class="order-id-block">
+            <p class="order-id-label">Mã đơn hàng</p>
+            <p class="order-id-value">#SIE-2026-0042</p>
+            <p class="order-date">Đặt ngày 28/03/2026 lúc 14:35</p>
+          </div>
+          <div class="order-status-badge status-confirmed" role="status" aria-label="Trạng thái: Đã xác nhận">
+            <span class="status-dot" aria-hidden="true"></span>
+            Đã xác nhận
+          </div>
+        </div>
+        <div class="order-summary-row">
+          <div class="order-meta-item">
+            <span class="order-meta-label">Thanh toán</span>
+            <span class="order-meta-value" style="color:var(--color-success);">✓ Đã xác nhận</span>
+          </div>
+          <div class="order-meta-item">
+            <span class="order-meta-label">Giao hàng</span>
+            <span class="order-meta-value">GHTK toàn quốc</span>
+          </div>
+          <div class="order-meta-item">
+            <span class="order-meta-label">Đợt bán</span>
+            <span class="order-meta-value">Đợt 03 — 2026</span>
+          </div>
+        </div>
+        <div class="order-total-row">
+          <span class="order-total-label">Tổng đơn hàng</span>
+          <span class="order-total-value">320.000 ₫</span>
+        </div>
+      </div>
+
+      <!-- ╔══════════════════════════════════════════════════════╗ -->
+      <!-- ║  STATUS TIMELINE — 5 steps vertical                ║ -->
+      <!-- ║  done=filled blue, active=pulsing, pending=grey    ║ -->
+      <!-- ╚══════════════════════════════════════════════════════╝ -->
+      <div class="timeline-card">
+        <div class="timeline-card-header">
+          <div class="timeline-card-icon" aria-hidden="true">🗺</div>
+          <h2 class="timeline-card-title">Hành trình đơn hàng</h2>
+        </div>
+        <ol class="timeline" aria-label="Trạng thái xử lý đơn hàng">
+
+          <!-- Step 1: done -->
+          <li class="timeline-step done">
+            <div class="timeline-left" aria-hidden="true">
+              <div class="timeline-icon">✓</div>
+            </div>
+            <div class="timeline-content">
+              <p class="timeline-step-name">Đơn hàng đã đặt</p>
+              <p class="timeline-step-desc">Form đặt hàng đã được ghi nhận thành công</p>
+              <p class="timeline-step-time">28/03/2026 — 14:35</p>
+            </div>
+          </li>
+
+          <!-- Step 2: done -->
+          <li class="timeline-step done">
+            <div class="timeline-left" aria-hidden="true">
+              <div class="timeline-icon">✓</div>
+            </div>
+            <div class="timeline-content">
+              <p class="timeline-step-name">Thanh toán xác nhận</p>
+              <p class="timeline-step-desc">Chuyển khoản đã được kiểm tra và xác nhận</p>
+              <p class="timeline-step-time">29/03/2026 — 09:12</p>
+            </div>
+          </li>
+
+          <!-- Step 3: active (current) -->
+          <li class="timeline-step active" aria-current="true">
+            <div class="timeline-left" aria-hidden="true">
+              <div class="timeline-icon">⚙</div>
+            </div>
+            <div class="timeline-content">
+              <p class="timeline-step-name">Đang xử lý đơn hàng</p>
+              <p class="timeline-step-desc">Đội SIE đang chuẩn bị và đóng gói sản phẩm của bạn</p>
+              <p class="timeline-step-time">Dự kiến: 10/04/2026</p>
+            </div>
+          </li>
+
+          <!-- Step 4: pending -->
+          <li class="timeline-step pending" aria-label="Chưa thực hiện">
+            <div class="timeline-left" aria-hidden="true">
+              <div class="timeline-icon">🚚</div>
+            </div>
+            <div class="timeline-content">
+              <p class="timeline-step-name">Đang giao hàng</p>
+              <p class="timeline-step-desc">Đơn hàng đã được chuyển cho đơn vị vận chuyển</p>
+              <p class="timeline-step-time">Chờ xử lý</p>
+            </div>
+          </li>
+
+          <!-- Step 5: pending -->
+          <li class="timeline-step pending" aria-label="Chưa thực hiện">
+            <div class="timeline-left" aria-hidden="true">
+              <div class="timeline-icon">🏠</div>
+            </div>
+            <div class="timeline-content">
+              <p class="timeline-step-name">Đã giao thành công</p>
+              <p class="timeline-step-desc">Bạn đã nhận được hàng — cảm ơn bạn đã ủng hộ đội SIE!</p>
+              <p class="timeline-step-time">Chờ xử lý</p>
+            </div>
+          </li>
+
+        </ol>
+      </div>
+
+      <!-- ╔══════════════════════════════════════════════════════╗ -->
+      <!-- ║  ORDER ITEMS                                        ║ -->
+      <!-- ╚══════════════════════════════════════════════════════╝ -->
+      <div class="items-card">
+        <div class="items-card-header">
+          <div class="timeline-card-icon" aria-hidden="true">📦</div>
+          <h2 class="items-card-title">Sản phẩm đã đặt</h2>
+        </div>
+        <div class="order-items">
+          <div class="order-item">
+            <div class="item-thumb" style="background:linear-gradient(135deg,#1B3A6B,#2E5299);"></div>
+            <div>
+              <p class="item-name">Tenugui Họa Tiết Mây Ngũ Sắc</p>
+              <p class="item-meta">35×90cm · Cotton · Nhuộm chàm</p>
+            </div>
+            <div class="item-right">
+              <p class="item-qty">× 1</p>
+              <p class="item-price">120.000 ₫</p>
+            </div>
+          </div>
+          <div class="order-item">
+            <div class="item-thumb" style="background:linear-gradient(to bottom,#E8B4B8,#1B3A6B);"></div>
+            <div>
+              <p class="item-name">Koinobori Sakura</p>
+              <p class="item-meta">60cm · Polyester cao cấp</p>
+            </div>
+            <div class="item-right">
+              <p class="item-qty">× 2</p>
+              <p class="item-price">170.000 ₫</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ╔══════════════════════════════════════════════════════╗ -->
+      <!-- ║  CUSTOMER INFO — masked for privacy                ║ -->
+      <!-- ╚══════════════════════════════════════════════════════╝ -->
+      <div class="info-card">
+        <div class="info-card-header">
+          <div class="timeline-card-icon" aria-hidden="true">👤</div>
+          <h2 class="info-card-title">Thông tin nhận hàng</h2>
+        </div>
+        <div class="info-rows">
+          <div class="info-row">
+            <span class="info-row-label">Người nhận</span>
+            <span class="info-row-value">Nguyễn Thị M*** A***</span>
+          </div>
+          <div class="info-row">
+            <span class="info-row-label">Điện thoại</span>
+            <span class="info-row-value">0912 ***678</span>
+          </div>
+          <div class="info-row">
+            <span class="info-row-label">Địa chỉ</span>
+            <span class="info-row-value">***, Quận Đống Đa, Hà Nội</span>
+          </div>
+          <div class="info-row">
+            <span class="info-row-label">Giao hàng</span>
+            <span class="info-row-value">GHTK — Giao tận nơi (30.000 ₫)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action buttons -->
+      <div class="action-buttons">
+        <a href="payment.html" class="btn-secondary">
+          📄 Xem hướng dẫn thanh toán
+        </a>
+        <button class="btn-help" type="button" onclick="window.open('https://facebook.com/sieyosakoi')">
+          💬 Liên hệ hỗ trợ
+        </button>
+      </div>
+
+    </div><!-- /result-area -->
+  </div>
+</main>
+
+<style>
+  .sr-only {
+    position: absolute; width: 1px; height: 1px;
+    padding: 0; margin: -1px; overflow: hidden;
+    clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+  }
+  .timeline-step.pending .timeline-icon { font-size: 13px; }
+</style>
+</body>
+</html>

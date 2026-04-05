@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SIE Yosakoi — Admin Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Old+Mincho:wght@400;600;700;900&family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --color-indigo-deep:  #1B3A6B;
+    --color-indigo-mid:   #2E5299;
+    --color-indigo-light: #4A72C4;
+    --color-indigo-wash:  #E8EEF8;
+    --color-offwhite:     #F8F6F2;
+    --color-warm-white:   #FDFCFA;
+    --color-charcoal:     #2C2C2C;
+    --color-slate:        #5A5A5A;
+    --color-mist:         #9A9A9A;
+    --color-border:       #E2DDD6;
+    --color-gold:         #C9A84C;
+    --color-gold-light:   #F5ECC7;
+    --color-sakura:       #E8B4B8;
+    --color-sakura-deep:  #C9767D;
+    --color-sage:         #A5B4A0;
+    --color-success:      #2E7D32;
+    --color-success-bg:   #E8F5E9;
+    --color-warning:      #E65100;
+    --color-warning-bg:   #FFF3E0;
+    --color-error:        #C62828;
+    --color-error-bg:     #FFEBEE;
+    --sidebar-width:      240px;
+    --topbar-height:      60px;
+    --font-display: 'Zen Old Mincho', serif;
+    --font-body:    'Noto Sans JP', sans-serif;
+    --radius-sm: 4px; --radius-md: 8px; --radius-lg: 12px; --radius-full: 9999px;
+    --shadow-sm: 0 2px 8px rgba(27,58,107,0.08);
+    --shadow-md: 0 4px 16px rgba(27,58,107,0.12);
+  }
+  html, body { height: 100%; }
+  body {
+    font-family: var(--font-body);
+    background: var(--color-offwhite);
+    color: var(--color-charcoal);
+    line-height: 1.6;
+  }
+
+  /* ─── Admin Layout ──────────────────────────────────────── */
+  .admin-layout { display: flex; min-height: 100vh; }
+
+  /* ─── Sidebar ───────────────────────────────────────────── */
+  .sidebar {
+    width: var(--sidebar-width); flex-shrink: 0;
+    background: var(--color-indigo-deep);
+    display: flex; flex-direction: column;
+    position: fixed; top: 0; left: 0; bottom: 0; z-index: 50;
+    overflow-y: auto;
+  }
+  .sidebar-header {
+    padding: 20px 16px 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+  .sidebar-brand { display: flex; align-items: center; gap: 10px; }
+  .sidebar-logo-mark {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: var(--color-gold); flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-display); font-size: 13px; font-weight: 900; color: var(--color-indigo-deep);
+  }
+  .sidebar-brand-text .name   { font-family: var(--font-display); font-size: 14px; font-weight: 700; color: #fff; }
+  .sidebar-brand-text .role   { font-size: 10px; color: rgba(255,255,255,0.45); letter-spacing: 0.1em; text-transform: uppercase; margin-top: 1px; }
+  .sidebar-batch-pill {
+    margin: 12px 16px 0;
+    background: rgba(201,168,76,0.15);
+    border: 1px solid rgba(201,168,76,0.3);
+    border-radius: var(--radius-md);
+    padding: 8px 12px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .batch-dot-sm {
+    width: 7px; height: 7px; border-radius: 50%; background: var(--color-gold); flex-shrink: 0;
+    animation: pulse-dot 2s infinite;
+  }
+  @keyframes pulse-dot {
+    0%,100% { box-shadow: 0 0 0 0 rgba(201,168,76,0.5); }
+    50%      { box-shadow: 0 0 0 5px rgba(201,168,76,0); }
+  }
+  .batch-pill-text { font-size: 11px; color: var(--color-gold); font-weight: 600; line-height: 1.3; }
+  .batch-pill-text span { display: block; font-size: 10px; color: rgba(255,255,255,0.45); font-weight: 400; }
+
+  .sidebar-nav { padding: 12px 8px; flex: 1; }
+  .nav-section-label {
+    font-size: 9px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase;
+    color: rgba(255,255,255,0.3); padding: 8px 8px 4px;
+  }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 10px; border-radius: var(--radius-md);
+    font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.65);
+    cursor: pointer; transition: background 0.15s, color 0.15s; margin-bottom: 2px;
+    text-decoration: none;
+  }
+  .nav-item:hover { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.9); }
+  .nav-item.active {
+    background: rgba(255,255,255,0.12); color: #fff; font-weight: 700;
+    border-right: 3px solid var(--color-gold);
+  }
+  .nav-item .nav-icon { width: 18px; text-align: center; font-size: 15px; flex-shrink: 0; }
+  .nav-badge {
+    margin-left: auto; background: var(--color-sakura-deep); color: white;
+    font-size: 10px; font-weight: 700; padding: 1px 7px; border-radius: var(--radius-full);
+    min-width: 20px; text-align: center;
+  }
+  .nav-badge.gold { background: var(--color-gold); color: var(--color-indigo-deep); }
+  .sidebar-footer {
+    padding: 12px 16px 16px;
+    border-top: 1px solid rgba(255,255,255,0.08);
+  }
+  .sidebar-user {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px; border-radius: var(--radius-md);
+    cursor: pointer; transition: background 0.15s;
+  }
+  .sidebar-user:hover { background: rgba(255,255,255,0.06); }
+  .user-avatar {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: rgba(255,255,255,0.15); color: rgba(255,255,255,0.7);
+    display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0;
+  }
+  .user-info .user-name { font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.8); }
+  .user-info .user-role { font-size: 10px; color: rgba(255,255,255,0.4); }
+
+  /* ─── Main content area ─────────────────────────────────── */
+  .admin-main {
+    margin-left: var(--sidebar-width);
+    flex: 1; display: flex; flex-direction: column; min-height: 100vh;
+  }
+
+  /* ─── Top bar ───────────────────────────────────────────── */
+  .topbar {
+    height: var(--topbar-height);
+    background: var(--color-warm-white);
+    border-bottom: 1px solid var(--color-border);
+    padding: 0 24px;
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    position: sticky; top: 0; z-index: 40;
+    box-shadow: var(--shadow-sm);
+  }
+  .topbar-left { display: flex; flex-direction: column; gap: 2px; }
+  .topbar-title { font-family: var(--font-display); font-size: 18px; font-weight: 700; color: var(--color-indigo-deep); line-height: 1.2; }
+  .topbar-subtitle { font-size: 12px; color: var(--color-mist); }
+  .topbar-right { display: flex; align-items: center; gap: 10px; }
+  .topbar-action {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 13px; font-weight: 600; padding: 8px 14px;
+    border-radius: var(--radius-md); cursor: pointer; transition: all 0.15s;
+    min-height: 36px; border: none;
+  }
+  .btn-primary-sm   { background: var(--color-indigo-deep); color: white; }
+  .btn-primary-sm:hover { background: var(--color-indigo-mid); }
+  .btn-outline-sm   { background: transparent; color: var(--color-indigo-deep); border: 1.5px solid var(--color-indigo-deep); }
+  .btn-outline-sm:hover { background: var(--color-indigo-wash); }
+  .topbar-notif {
+    width: 36px; height: 36px; border-radius: var(--radius-md);
+    background: var(--color-offwhite); border: 1px solid var(--color-border);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; position: relative; transition: background 0.15s;
+  }
+  .topbar-notif:hover { background: var(--color-indigo-wash); }
+  .notif-dot {
+    position: absolute; top: 6px; right: 6px;
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--color-sakura-deep); border: 2px solid var(--color-warm-white);
+  }
+
+  /* ─── Content ───────────────────────────────────────────── */
+  .content { padding: 24px; flex: 1; max-width: 1200px; }
+
+  /* ─── Stats grid ────────────────────────────────────────── */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px; margin-bottom: 24px;
+  }
+  .stat-card {
+    background: var(--color-warm-white);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: 18px 20px;
+    box-shadow: var(--shadow-sm);
+    display: flex; flex-direction: column; gap: 12px;
+    transition: box-shadow 0.2s, transform 0.2s;
+  }
+  .stat-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+  .stat-header { display: flex; align-items: flex-start; justify-content: space-between; }
+  .stat-icon {
+    width: 40px; height: 40px; border-radius: var(--radius-md);
+    display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0;
+  }
+  .stat-icon.blue   { background: var(--color-indigo-wash); }
+  .stat-icon.gold   { background: var(--color-gold-light); }
+  .stat-icon.sakura { background: var(--color-sakura); }
+  .stat-icon.green  { background: var(--color-success-bg); }
+  .stat-change {
+    display: inline-flex; align-items: center; gap: 3px;
+    font-size: 11px; font-weight: 700; padding: 2px 7px;
+    border-radius: var(--radius-full);
+  }
+  .change-up   { background: var(--color-success-bg); color: var(--color-success); }
+  .change-down { background: var(--color-error-bg);   color: var(--color-error);   }
+  .stat-body {}
+  .stat-label { font-size: 12px; color: var(--color-mist); font-weight: 600; letter-spacing: 0.04em; }
+  .stat-value { font-size: 26px; font-weight: 700; color: var(--color-indigo-deep); line-height: 1.2; margin-top: 4px; }
+  .stat-sub   { font-size: 11px; color: var(--color-slate); margin-top: 3px; }
+
+  /* ─── Content grid: table + quick actions ───────────────── */
+  .content-grid {
+    display: grid; grid-template-columns: 1fr 280px; gap: 20px; align-items: flex-start;
+  }
+
+  /* ─── Table card ────────────────────────────────────────── */
+  .table-card {
+    background: var(--color-warm-white);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    overflow: hidden; box-shadow: var(--shadow-sm);
+  }
+  .table-card-header {
+    padding: 16px 20px; border-bottom: 1px solid var(--color-border);
+    display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  }
+  .table-card-title { font-family: var(--font-display); font-size: 15px; font-weight: 700; color: var(--color-indigo-deep); }
+  .table-filters { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .filter-select {
+    background: var(--color-offwhite); border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm); padding: 6px 10px;
+    font-family: var(--font-body); font-size: 12px; color: var(--color-charcoal);
+    cursor: pointer; min-height: 32px;
+  }
+  .search-input-sm {
+    background: var(--color-offwhite); border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm); padding: 6px 10px;
+    font-family: var(--font-body); font-size: 12px; color: var(--color-charcoal);
+    width: 160px; min-height: 32px;
+  }
+  .search-input-sm::placeholder { color: var(--color-mist); }
+  table { width: 100%; border-collapse: collapse; }
+  thead th {
+    background: var(--color-offwhite); padding: 10px 16px;
+    text-align: left; font-size: 11px; font-weight: 700;
+    color: var(--color-slate); letter-spacing: 0.1em; text-transform: uppercase;
+    border-bottom: 2px solid var(--color-border); white-space: nowrap;
+  }
+  tbody td {
+    padding: 12px 16px; font-size: 13px; color: var(--color-charcoal);
+    border-bottom: 1px solid var(--color-border); vertical-align: middle;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover td { background: var(--color-indigo-wash); cursor: pointer; }
+  .order-id-cell { font-family: monospace; font-weight: 700; color: var(--color-indigo-deep); font-size: 12px; }
+  .customer-cell {}
+  .customer-name { font-weight: 600; color: var(--color-charcoal); }
+  .customer-phone { font-size: 11px; color: var(--color-mist); margin-top: 2px; }
+  .items-cell { font-size: 12px; color: var(--color-slate); line-height: 1.4; }
+  .amount-cell { font-weight: 700; color: var(--color-indigo-deep); white-space: nowrap; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 3px;
+    font-size: 10px; font-weight: 700; padding: 3px 8px;
+    border-radius: var(--radius-full); letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap;
+  }
+  .badge-awaiting  { background: var(--color-warning-bg);  color: var(--color-warning); }
+  .badge-verified  { background: var(--color-success-bg);  color: var(--color-success); }
+  .badge-confirmed { background: var(--color-indigo-wash); color: var(--color-indigo-mid); }
+  .badge-shipping  { background: #EDE7F6; color: #6A1B9A; }
+  .badge-done      { background: var(--color-success-bg);  color: var(--color-success); }
+  .badge-cancelled { background: var(--color-border);       color: var(--color-mist); }
+  .badge-new       { background: var(--color-sakura);       color: var(--color-sakura-deep); }
+  .action-btn {
+    background: none; border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm); padding: 4px 10px;
+    font-size: 11px; font-weight: 600; color: var(--color-slate);
+    cursor: pointer; transition: all 0.15s; min-height: 26px;
+  }
+  .action-btn:hover { background: var(--color-indigo-wash); color: var(--color-indigo-deep); border-color: var(--color-indigo-light); }
+  .table-footer {
+    padding: 12px 20px; border-top: 1px solid var(--color-border);
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 12px; color: var(--color-mist);
+  }
+  .pagination { display: flex; gap: 4px; }
+  .page-btn {
+    width: 28px; height: 28px; border-radius: var(--radius-sm);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 600; cursor: pointer;
+    background: none; border: 1px solid var(--color-border); color: var(--color-slate);
+    transition: all 0.15s;
+  }
+  .page-btn.active { background: var(--color-indigo-deep); color: white; border-color: var(--color-indigo-deep); }
+  .page-btn:hover:not(.active) { background: var(--color-indigo-wash); }
+
+  /* ─── Quick actions panel ───────────────────────────────── */
+  .side-panel { display: flex; flex-direction: column; gap: 16px; }
+  .panel-card {
+    background: var(--color-warm-white);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    overflow: hidden; box-shadow: var(--shadow-sm);
+  }
+  .panel-card-header {
+    padding: 12px 16px; border-bottom: 1px solid var(--color-border);
+    font-family: var(--font-display); font-size: 13px; font-weight: 700; color: var(--color-indigo-deep);
+  }
+  .quick-actions { padding: 12px 16px; display: flex; flex-direction: column; gap: 8px; }
+  .quick-action-btn {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px; border-radius: var(--radius-md);
+    font-size: 13px; font-weight: 600; cursor: pointer;
+    transition: background 0.15s; border: none; text-align: left; width: 100%;
+    background: var(--color-offwhite); color: var(--color-charcoal);
+  }
+  .quick-action-btn:hover { background: var(--color-indigo-wash); color: var(--color-indigo-deep); }
+  .quick-action-icon { width: 28px; height: 28px; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+  .qa-blue   { background: var(--color-indigo-wash); }
+  .qa-gold   { background: var(--color-gold-light); }
+  .qa-green  { background: var(--color-success-bg); }
+  .qa-sakura { background: var(--color-sakura); }
+
+  /* ─── Payment pending alert ─────────────────────────────── */
+  .pending-alert {
+    background: var(--color-warning-bg);
+    border: 1px solid rgba(230,81,0,0.2);
+    border-radius: var(--radius-md);
+    padding: 12px 16px;
+    display: flex; gap: 10px; align-items: flex-start;
+  }
+  .alert-icon { font-size: 18px; flex-shrink: 0; }
+  .alert-text { font-size: 12px; color: var(--color-warning); line-height: 1.6; }
+  .alert-text strong { display: block; font-weight: 700; margin-bottom: 2px; }
+  .alert-link { color: var(--color-indigo-light); font-weight: 700; text-decoration: underline; cursor: pointer; font-size: 12px; display: block; margin-top: 6px; }
+
+  /* ─── Batch status mini ─────────────────────────────────── */
+  .batch-status-mini { padding: 12px 16px; display: flex; flex-direction: column; gap: 10px; }
+  .batch-row { display: flex; justify-content: space-between; align-items: center; }
+  .batch-row-label { font-size: 12px; color: var(--color-mist); }
+  .batch-row-value { font-size: 13px; font-weight: 600; color: var(--color-charcoal); }
+  .progress-bar-wrap { height: 6px; background: var(--color-border); border-radius: var(--radius-full); overflow: hidden; }
+  .progress-bar-fill { height: 100%; background: linear-gradient(to right, var(--color-indigo-light), var(--color-gold)); border-radius: var(--radius-full); transition: width 0.4s; }
+  .batch-progress-label { font-size: 11px; color: var(--color-mist); }
+  .btn-view-batch {
+    display: block; width: 100%; text-align: center;
+    background: var(--color-indigo-wash); color: var(--color-indigo-deep);
+    font-size: 12px; font-weight: 700; padding: 8px;
+    border-radius: var(--radius-md); border: none; cursor: pointer;
+    transition: background 0.15s; margin-top: 4px;
+  }
+  .btn-view-batch:hover { background: var(--color-indigo-mid); color: white; }
+</style>
+</head>
+<body>
+
+<div class="admin-layout">
+
+  <!-- ╔══════════════════════════════════════════════════════════╗ -->
+  <!-- ║  SIDEBAR — 240px fixed, dark indigo                    ║ -->
+  <!-- ║  Shows: brand, batch status pill, nav items, user      ║ -->
+  <!-- ╚══════════════════════════════════════════════════════════╝ -->
+  <aside class="sidebar" role="navigation" aria-label="Điều hướng admin">
+    <div class="sidebar-header">
+      <div class="sidebar-brand">
+        <div class="sidebar-logo-mark">SIE</div>
+        <div class="sidebar-brand-text">
+          <p class="name">SIE Yosakoi</p>
+          <p class="role">Admin Panel</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Active batch indicator in sidebar -->
+    <div class="sidebar-batch-pill">
+      <div class="batch-dot-sm"></div>
+      <div class="batch-pill-text">
+        Đợt Bán 03 — ĐANG MỞ
+        <span>Kết thúc 15/04/2026</span>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <p class="nav-section-label">Tổng quan</p>
+      <a href="admin-dashboard.html" class="nav-item active" aria-current="page">
+        <span class="nav-icon">📊</span>
+        Dashboard
+      </a>
+
+      <p class="nav-section-label" style="margin-top:12px;">Quản lý</p>
+      <a href="#" class="nav-item">
+        <span class="nav-icon">📦</span>
+        Đơn hàng
+        <span class="nav-badge">7</span>
+      </a>
+      <a href="admin-batch-detail.html" class="nav-item">
+        <span class="nav-icon">🗂</span>
+        Đợt bán
+      </a>
+      <a href="#" class="nav-item">
+        <span class="nav-icon">🛍</span>
+        Sản phẩm
+      </a>
+      <a href="#" class="nav-item">
+        <span class="nav-icon">💳</span>
+        Thanh toán
+        <span class="nav-badge gold">3</span>
+      </a>
+
+      <p class="nav-section-label" style="margin-top:12px;">Hệ thống</p>
+      <a href="#" class="nav-item">
+        <span class="nav-icon">⚙</span>
+        Cài đặt
+      </a>
+      <a href="index.html" class="nav-item" target="_blank">
+        <span class="nav-icon">🌐</span>
+        Xem shop
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="sidebar-user" role="button" aria-label="Tài khoản admin" tabindex="0">
+        <div class="user-avatar" aria-hidden="true">👤</div>
+        <div class="user-info">
+          <p class="user-name">Admin SIE</p>
+          <p class="user-role">Quản trị viên</p>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ╔══════════════════════════════════════════════════════════╗ -->
+  <!-- ║  MAIN AREA                                             ║ -->
+  <!-- ╚══════════════════════════════════════════════════════════╝ -->
+  <div class="admin-main">
+
+    <!-- ── Top bar ────────────────────────────────────────── -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <h1 class="topbar-title">Dashboard</h1>
+        <p class="topbar-subtitle">Thứ Bảy, 04/04/2026 — Đợt Bán 03 đang mở</p>
+      </div>
+      <div class="topbar-right">
+        <button class="topbar-action btn-outline-sm" type="button">↓ Xuất báo cáo</button>
+        <a href="admin-batch-detail.html" class="topbar-action btn-primary-sm">Xem đợt bán →</a>
+        <button class="topbar-notif" type="button" aria-label="Thông báo — có 3 thông báo mới">
+          🔔
+          <span class="notif-dot" aria-hidden="true"></span>
+        </button>
+      </div>
+    </header>
+
+    <!-- ── Content ─────────────────────────────────────────── -->
+    <div class="content">
+
+      <!-- ╔════════════════════════════════════════════════════╗ -->
+      <!-- ║  STATS CARDS — 4 columns                         ║ -->
+      <!-- ║  New orders, Revenue, Pending payment, Confirmed ║ -->
+      <!-- ╚════════════════════════════════════════════════════╝ -->
+      <div class="stats-grid" role="list" aria-label="Thống kê tổng quan">
+
+        <div class="stat-card" role="listitem">
+          <div class="stat-header">
+            <div class="stat-icon blue" aria-hidden="true">📥</div>
+            <span class="stat-change change-up" aria-label="Tăng 12%">↑ 12%</span>
+          </div>
+          <div class="stat-body">
+            <p class="stat-label">ĐƠN MỚI HÔM NAY</p>
+            <p class="stat-value">7</p>
+            <p class="stat-sub">Tổng đợt 03: 42 đơn</p>
+          </div>
+        </div>
+
+        <div class="stat-card" role="listitem">
+          <div class="stat-header">
+            <div class="stat-icon gold" aria-hidden="true">💰</div>
+            <span class="stat-change change-up" aria-label="Tăng 8%">↑ 8%</span>
+          </div>
+          <div class="stat-body">
+            <p class="stat-label">DOANH THU ĐỢT 03</p>
+            <p class="stat-value">8.4M ₫</p>
+            <p class="stat-sub">Từ 28 đơn đã xác nhận</p>
+          </div>
+        </div>
+
+        <div class="stat-card" role="listitem">
+          <div class="stat-header">
+            <div class="stat-icon sakura" aria-hidden="true">⏳</div>
+            <span class="stat-change change-down" aria-label="Chờ xử lý">! 3</span>
+          </div>
+          <div class="stat-body">
+            <p class="stat-label">CHỜ XÁC NHẬN TT</p>
+            <p class="stat-value">3</p>
+            <p class="stat-sub">Cần kiểm tra ngân hàng</p>
+          </div>
+        </div>
+
+        <div class="stat-card" role="listitem">
+          <div class="stat-header">
+            <div class="stat-icon green" aria-hidden="true">✅</div>
+            <span class="stat-change change-up" aria-label="Tăng">↑ 5</span>
+          </div>
+          <div class="stat-body">
+            <p class="stat-label">ĐÃ GIAO THÀNH CÔNG</p>
+            <p class="stat-value">11</p>
+            <p class="stat-sub">Từ đợt 01 &amp; 02</p>
+          </div>
+        </div>
+
+      </div><!-- /stats-grid -->
+
+      <!-- ╔════════════════════════════════════════════════════╗ -->
+      <!-- ║  CONTENT GRID: recent orders table + side panel  ║ -->
+      <!-- ╚════════════════════════════════════════════════════╝ -->
+      <div class="content-grid">
+
+        <!-- Recent orders table -->
+        <div class="table-card">
+          <div class="table-card-header">
+            <h2 class="table-card-title">Đơn hàng gần đây</h2>
+            <div class="table-filters">
+              <input type="search" class="search-input-sm" placeholder="Tìm mã đơn, tên...">
+              <select class="filter-select" aria-label="Lọc theo trạng thái">
+                <option value="">Tất cả trạng thái</option>
+                <option value="awaiting">Chờ thanh toán</option>
+                <option value="verified">Đã thanh toán</option>
+                <option value="confirmed">Đã xác nhận</option>
+                <option value="shipping">Đang giao</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="overflow-x:auto;">
+            <table aria-label="Danh sách đơn hàng gần đây">
+              <thead>
+                <tr>
+                  <th scope="col">Mã đơn</th>
+                  <th scope="col">Khách hàng</th>
+                  <th scope="col">Sản phẩm</th>
+                  <th scope="col">Tổng tiền</th>
+                  <th scope="col">Thanh toán</th>
+                  <th scope="col">Đơn hàng</th>
+                  <th scope="col">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><span class="order-id-cell">#SIE-0048</span></td>
+                  <td><div class="customer-cell"><p class="customer-name">Trần Minh Khoa</p><p class="customer-phone">0934 567 890</p></div></td>
+                  <td><span class="items-cell">Tenugui Mây × 2<br>Koinobori × 1</span></td>
+                  <td><span class="amount-cell">325.000 ₫</span></td>
+                  <td><span class="badge badge-awaiting">Chờ TT</span></td>
+                  <td><span class="badge badge-new">Mới</span></td>
+                  <td><button class="action-btn">Xem</button></td>
+                </tr>
+                <tr>
+                  <td><span class="order-id-cell">#SIE-0047</span></td>
+                  <td><div class="customer-cell"><p class="customer-name">Lê Thị Hương</p><p class="customer-phone">0912 345 678</p></div></td>
+                  <td><span class="items-cell">Tenugui Chấm Bi × 1</span></td>
+                  <td><span class="amount-cell">120.000 ₫</span></td>
+                  <td><span class="badge badge-verified">Đã TT</span></td>
+                  <td><span class="badge badge-confirmed">Xác nhận</span></td>
+                  <td><button class="action-btn">Xem</button></td>
+                </tr>
+                <tr>
+                  <td><span class="order-id-cell">#SIE-0046</span></td>
+                  <td><div class="customer-cell"><p class="customer-name">Phạm Đức Anh</p><p class="customer-phone">0978 123 456</p></div></td>
+                  <td><span class="items-cell">Koinobori Sakura × 3</span></td>
+                  <td><span class="amount-cell">255.000 ₫</span></td>
+                  <td><span class="badge badge-awaiting">Chờ TT</span></td>
+                  <td><span class="badge badge-new">Mới</span></td>
+                  <td><button class="action-btn">Xem</button></td>
+                </tr>
+                <tr>
+                  <td><span class="order-id-cell">#SIE-0045</span></td>
+                  <td><div class="customer-cell"><p class="customer-name">Nguyễn Thị Mai</p><p class="customer-phone">0901 234 567</p></div></td>
+                  <td><span class="items-cell">Tenugui Mây × 1<br>Tenugui Sọc × 1</span></td>
+                  <td><span class="amount-cell">230.000 ₫</span></td>
+                  <td><span class="badge badge-verified">Đã TT</span></td>
+                  <td><span class="badge badge-shipping">Đang giao</span></td>
+                  <td><button class="action-btn">Xem</button></td>
+                </tr>
+                <tr>
+                  <td><span class="order-id-cell">#SIE-0044</span></td>
+                  <td><div class="customer-cell"><p class="customer-name">Võ Thanh Tùng</p><p class="customer-phone">0856 789 012</p></div></td>
+                  <td><span class="items-cell">Tenugui Sọc × 2</span></td>
+                  <td><span class="amount-cell">220.000 ₫</span></td>
+                  <td><span class="badge badge-awaiting">Chờ TT</span></td>
+                  <td><span class="badge badge-new">Mới</span></td>
+                  <td><button class="action-btn">Xem</button></td>
+                </tr>
+                <tr>
+                  <td><span class="order-id-cell">#SIE-0043</span></td>
+                  <td><div class="customer-cell"><p class="customer-name">Hoàng Thị Lan</p><p class="customer-phone">0943 567 890</p></div></td>
+                  <td><span class="items-cell">Koinobori Sakura × 2</span></td>
+                  <td><span class="amount-cell">170.000 ₫</span></td>
+                  <td><span class="badge badge-verified">Đã TT</span></td>
+                  <td><span class="badge badge-confirmed">Xác nhận</span></td>
+                  <td><button class="action-btn">Xem</button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="table-footer">
+            <span>Hiển thị 6 / 42 đơn hàng</span>
+            <div class="pagination" role="navigation" aria-label="Phân trang">
+              <button class="page-btn active" aria-current="page" aria-label="Trang 1">1</button>
+              <button class="page-btn" aria-label="Trang 2">2</button>
+              <button class="page-btn" aria-label="Trang 3">3</button>
+              <button class="page-btn" aria-label="Trang tiếp">›</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ╔══════════════════════════════════════════════════╗ -->
+        <!-- ║  SIDE PANEL — Quick actions + alerts + batch   ║ -->
+        <!-- ╚══════════════════════════════════════════════════╝ -->
+        <aside class="side-panel" aria-label="Thao tác nhanh">
+
+          <!-- Payment pending alert -->
+          <div class="panel-card">
+            <div class="panel-card-header">⚠ Cần xử lý</div>
+            <div style="padding:12px 16px;">
+              <div class="pending-alert" role="alert">
+                <span class="alert-icon" aria-hidden="true">💳</span>
+                <div class="alert-text">
+                  <strong>3 đơn chờ xác nhận thanh toán</strong>
+                  Kiểm tra tài khoản ngân hàng và xác nhận các chuyển khoản tương ứng.
+                  <a href="#" class="alert-link">Xem danh sách →</a>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick actions -->
+          <div class="panel-card">
+            <div class="panel-card-header">Thao tác nhanh</div>
+            <div class="quick-actions">
+              <button class="quick-action-btn" type="button">
+                <div class="quick-action-icon qa-sakura" aria-hidden="true">💳</div>
+                Xác nhận thanh toán
+              </button>
+              <button class="quick-action-btn" type="button">
+                <div class="quick-action-icon qa-blue" aria-hidden="true">📦</div>
+                Cập nhật vận chuyển
+              </button>
+              <a href="admin-batch-detail.html" class="quick-action-btn">
+                <div class="quick-action-icon qa-gold" aria-hidden="true">🗂</div>
+                Xem chi tiết đợt bán
+              </a>
+              <button class="quick-action-btn" type="button">
+                <div class="quick-action-icon qa-green" aria-hidden="true">↓</div>
+                Xuất Excel đơn hàng
+              </button>
+            </div>
+          </div>
+
+          <!-- Batch status mini -->
+          <div class="panel-card">
+            <div class="panel-card-header">Đợt Bán 03 — Tổng quan</div>
+            <div class="batch-status-mini">
+              <div class="batch-row">
+                <span class="batch-row-label">Tổng đơn</span>
+                <span class="batch-row-value">42 / ~60</span>
+              </div>
+              <div>
+                <div class="progress-bar-wrap" role="progressbar" aria-valuenow="70" aria-valuemin="0" aria-valuemax="100" aria-label="70% mục tiêu đơn hàng">
+                  <div class="progress-bar-fill" style="width:70%;"></div>
+                </div>
+                <p class="batch-progress-label" style="margin-top:4px;">70% mục tiêu</p>
+              </div>
+              <div class="batch-row">
+                <span class="batch-row-label">Doanh thu</span>
+                <span class="batch-row-value">8.400.000 ₫</span>
+              </div>
+              <div class="batch-row">
+                <span class="batch-row-label">Kết thúc</span>
+                <span class="batch-row-value" style="color:var(--color-warning);">Còn 11 ngày</span>
+              </div>
+              <a href="admin-batch-detail.html" class="btn-view-batch">Xem chi tiết đợt bán →</a>
+            </div>
+          </div>
+
+        </aside>
+      </div><!-- /content-grid -->
+    </div><!-- /content -->
+  </div><!-- /admin-main -->
+</div><!-- /admin-layout -->
+
+</body>
+</html>

@@ -1,0 +1,129 @@
+---
+import { env } from 'cloudflare:workers';
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import { getOpenBatch, getOrdersByBatch, updatePaymentStatus } from '../../../lib/db';
+
+const db = env.DB;
+
+// Quick verify payment action
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const orderId = form.get('order_id')?.toString();
+  if (orderId) await updatePaymentStatus(db, orderId, 'verified');
+  return Astro.redirect('/admin/orders');
+}
+
+const batch = await getOpenBatch(db);
+const params = Astro.url.searchParams;
+const filters = {
+  batch_id: batch?.id,
+  order_status: params.get('order_status') || undefined,
+  payment_status: params.get('payment_status') || undefined,
+  page: parseInt(params.get('page') || '1'),
+};
+const orders = batch ? await getOrdersByBatch(db, filters) : [];
+
+function fmtVnd(n: number) { return n.toLocaleString('vi-VN') + 'đ'; }
+function fmtDate(ts: number) {
+  return new Date(ts * 1000).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
+}
+
+const deliveryShort: Record<string, string> = {
+  pickup_practice: 'Buổi tập', pickup_festival_sat: 'LH Thứ 7',
+  pickup_festival_sun: 'LH CN', ship_after_27apr: 'Giao hàng',
+};
+const paymentLabels: Record<string, string> = { awaiting: 'Chờ CK', verified: 'Đã CK', refunded: 'Hoàn tiền' };
+const orderLabels: Record<string, string> = { pending: 'Chờ xử lý', confirmed: 'Xác nhận', shipping: 'Đang giao', done: 'Xong', cancelled: 'Huỷ' };
+---
+
+<AdminLayout title="Đơn hàng" currentPage="orders">
+  <!-- Filter bar -->
+  <form method="GET" action="/admin/orders">
+    <div class="filter-bar">
+      <div class="form-group">
+        <label class="form-label">Thanh toán</label>
+        <select class="form-select" name="payment_status" style="min-width:130px">
+          <option value="">Tất cả</option>
+          <option value="awaiting" selected={filters.payment_status === 'awaiting'}>Chờ CK</option>
+          <option value="verified" selected={filters.payment_status === 'verified'}>Đã CK</option>
+          <option value="refunded" selected={filters.payment_status === 'refunded'}>Hoàn tiền</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Đơn hàng</label>
+        <select class="form-select" name="order_status" style="min-width:130px">
+          <option value="">Tất cả</option>
+          <option value="pending"   selected={filters.order_status === 'pending'}>Chờ xử lý</option>
+          <option value="confirmed" selected={filters.order_status === 'confirmed'}>Xác nhận</option>
+          <option value="shipping"  selected={filters.order_status === 'shipping'}>Đang giao</option>
+          <option value="done"      selected={filters.order_status === 'done'}>Xong</option>
+          <option value="cancelled" selected={filters.order_status === 'cancelled'}>Huỷ</option>
+        </select>
+      </div>
+      <button type="submit" class="btn btn-primary btn-sm" style="align-self:flex-end">Lọc</button>
+      <a href="/admin/orders" class="btn btn-outline btn-sm" style="align-self:flex-end">Reset</a>
+    </div>
+  </form>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">📋 Đơn hàng ({orders.length})</span>
+    </div>
+    {orders.length === 0 ? (
+      <div class="card-body" style="color:var(--text-muted)">Không có đơn hàng nào.</div>
+    ) : (
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Mã đơn</th>
+              <th>Khách hàng</th>
+              <th>Nhận hàng</th>
+              <th>Tổng tiền</th>
+              <th>Thanh toán</th>
+              <th>Đơn hàng</th>
+              <th>Ngày đặt</th>
+              <th>Hành động</th>
+            </tr>
+          </thead>
+          <tbody>
+            {orders.map(o => (
+              <tr>
+                <td><a href={`/admin/orders/${o.id}`} style="font-weight:700">{o.id}</a></td>
+                <td>
+                  <div style="font-weight:600">{o.customer_name}</div>
+                  <div style="font-size:0.78rem;color:var(--text-muted)">{o.phone}</div>
+                </td>
+                <td style="font-size:0.8rem">{deliveryShort[o.delivery_method] ?? o.delivery_method}</td>
+                <td style="font-weight:700">{fmtVnd(o.total)}</td>
+                <td><span class={`badge badge-${o.payment_status}`}>{paymentLabels[o.payment_status] ?? o.payment_status}</span></td>
+                <td><span class={`badge badge-${o.order_status}`}>{orderLabels[o.order_status] ?? o.order_status}</span></td>
+                <td style="font-size:0.78rem;white-space:nowrap">{fmtDate(o.created_at)}</td>
+                <td>
+                  {o.payment_status === 'awaiting' && (
+                    <form action="/admin/orders" method="POST" class="action-form">
+                      <input type="hidden" name="order_id" value={o.id} />
+                      <button type="submit" class="btn btn-success btn-sm">✓ Duyệt CK</button>
+                    </form>
+                  )}
+                  <a href={`/admin/orders/${o.id}`} class="btn btn-outline btn-sm" style="margin-left:4px">Chi tiết</a>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )}
+  </div>
+
+  <!-- Pagination -->
+  {orders.length === 20 && (
+    <div class="pagination">
+      {filters.page > 1 && (
+        <a class="page-btn" href={`/admin/orders?page=${filters.page - 1}&payment_status=${filters.payment_status ?? ''}&order_status=${filters.order_status ?? ''}`}>←</a>
+      )}
+      <span class="page-btn active">{filters.page}</span>
+      <a class="page-btn" href={`/admin/orders?page=${filters.page + 1}&payment_status=${filters.payment_status ?? ''}&order_status=${filters.order_status ?? ''}`}>→</a>
+    </div>
+  )}
+</AdminLayout>
