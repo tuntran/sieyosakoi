@@ -68,9 +68,43 @@ const navLinks = [
     </div>
   </aside>
 
+  <!-- ── Mobile drawer backdrop ──────────────────── -->
+  <div class="drawer-backdrop" id="drawer-backdrop"></div>
+
+  <!-- ── Mobile drawer ─────────────────────────── -->
+  <div class="admin-drawer" id="admin-drawer">
+    <div class="drawer-header">
+      <div class="sidebar-brand-name">🎏 SIE Yosakoi</div>
+      <div class="sidebar-brand-sub">Admin Panel</div>
+      {batchName && (
+        <div class="sidebar-batch" style="margin:8px 0 0">
+          <div style="font-size:0.68rem;color:rgba(255,255,255,0.5);margin-bottom:2px">Đợt hiện tại</div>
+          <div class="sidebar-batch-name">{batchName}</div>
+        </div>
+      )}
+    </div>
+    <nav class="sidebar-nav">
+      {navLinks.map(link => (
+        <a href={link.href} class={`nav-item${currentPage === link.key ? ' active' : ''}`}>
+          <span>{link.icon}</span>{link.label}
+        </a>
+      ))}
+    </nav>
+    <div class="sidebar-footer">
+      <form action="/admin/logout" method="POST">
+        <button type="submit" class="btn btn-outline" style="width:100%;color:rgba(255,255,255,0.6);border-color:rgba(255,255,255,0.2);font-size:0.8rem;min-height:32px">
+          ⏏ Đăng xuất
+        </button>
+      </form>
+    </div>
+  </div>
+
   <!-- ── Main ─────────────────────────────────────── -->
   <div class="admin-main">
     <div class="admin-topbar">
+      <button class="topbar-hamburger" id="btn-hamburger" aria-label="Mở menu">
+        <span></span><span></span><span></span>
+      </button>
       <span class="topbar-title">{title}</span>
       <div class="topbar-actions">
         <a href="/" class="btn btn-outline btn-sm" target="_blank">🌐 Xem trang chủ</a>
@@ -82,5 +116,29 @@ const navLinks = [
   </div>
 
 </div>
+
+<script>
+  const hamburger = document.getElementById('btn-hamburger');
+  const drawer = document.getElementById('admin-drawer');
+  const backdrop = document.getElementById('drawer-backdrop');
+
+  function openDrawer() {
+    drawer?.classList.add('open');
+    backdrop?.classList.add('open');
+    document.body.style.overflow = 'hidden';
+    hamburger?.setAttribute('aria-expanded', 'true');
+  }
+  function closeDrawer() {
+    drawer?.classList.remove('open');
+    backdrop?.classList.remove('open');
+    document.body.style.overflow = '';
+    hamburger?.setAttribute('aria-expanded', 'false');
+  }
+
+  hamburger?.addEventListener('click', openDrawer);
+  backdrop?.addEventListener('click', closeDrawer);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDrawer(); });
+  drawer?.querySelectorAll('.nav-item').forEach(a => a.addEventListener('click', closeDrawer));
+</script>
 </body>
 </html>

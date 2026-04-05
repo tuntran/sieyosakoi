@@ -350,10 +350,124 @@ img { display: block; max-width: 100%; }
 }
 .upload-area:hover { border-color: var(--navy); }
 
+/* ── Order detail 2-col grid (desktop) ────────────── */
+.order-detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+/* ── Stat card as link ────────────────────────────── */
+.stat-card-link {
+  text-decoration: none;
+  cursor: pointer;
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+.stat-card-link:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+  text-decoration: none;
+}
+
+/* ── Mobile hamburger (hidden desktop) ────────────── */
+.topbar-hamburger { display: none; }
+
+/* ── Order card list (hidden desktop) ────────────── */
+.order-card-list { display: none; }
+
+/* ── Sticky action bar (hidden desktop) ──────────── */
+.order-sticky-bar { display: none; }
+
+/* ── Mobile drawer (always rendered, off-screen) ─── */
+.admin-drawer {
+  position: fixed; top: 0; left: 0; bottom: 0;
+  width: 280px; background: var(--navy);
+  display: flex; flex-direction: column;
+  transform: translateX(-100%);
+  transition: transform 0.3s cubic-bezier(0, 0, 0.2, 1);
+  z-index: 200; overflow-y: auto;
+}
+.drawer-backdrop {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.5);
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.3s ease;
+  z-index: 199;
+}
+
 @media (max-width: 768px) {
+  /* Layout */
   .admin-sidebar { display: none; }
   .admin-main { margin-left: 0; }
+  .admin-content { padding: 16px; }
+
+  /* Hamburger */
+  .topbar-hamburger {
+    display: flex; flex-direction: column; justify-content: center; gap: 5px;
+    width: 40px; height: 40px; background: none; border: none; cursor: pointer;
+    padding: 8px; border-radius: var(--radius-sm); flex-shrink: 0;
+  }
+  .topbar-hamburger span {
+    display: block; width: 20px; height: 2px;
+    background: var(--navy); border-radius: 2px;
+  }
+  .topbar-hamburger:hover { background: var(--offwhite); }
+
+  /* Drawer open state */
+  .admin-drawer.open { transform: translateX(0); }
+  .drawer-backdrop.open { opacity: 1; pointer-events: auto; }
+  .drawer-header { padding: 20px 16px 16px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+
+  /* Stats / forms */
   .stats-grid { grid-template-columns: 1fr 1fr; }
   .order-info-grid { grid-template-columns: 1fr; }
   .form-row { grid-template-columns: 1fr; }
+
+  /* Filter bar */
+  .filter-bar { flex-direction: column; gap: 8px; }
+  .filter-bar .form-group { min-width: unset; width: 100%; }
+  .filter-bar .btn { width: 100%; }
+
+  /* Order cards (show) */
+  .table-wrap { display: none; }
+  .order-card-list { display: flex; flex-direction: column; gap: 10px; padding: 12px; }
+  .order-card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 14px;
+    display: flex; flex-direction: column; gap: 10px;
+    box-shadow: var(--shadow-sm);
+  }
+  .order-card-top { display: flex; justify-content: space-between; align-items: center; }
+  .order-card-id { font-weight: 700; color: var(--navy); font-size: 0.85rem; font-family: monospace; }
+  .order-card-date { font-size: 0.75rem; color: var(--text-muted); }
+  .order-card-customer { display: flex; flex-direction: column; gap: 2px; }
+  .order-card-customer strong { font-size: 0.95rem; color: var(--text); }
+  .order-card-customer span { font-size: 0.8rem; color: var(--text-muted); }
+  .order-card-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .order-card-total { font-weight: 700; font-size: 1rem; color: var(--navy); }
+  .order-card-actions { display: flex; gap: 8px; align-items: center; }
+  .order-card-actions .btn { min-height: 44px; font-size: 0.875rem; }
+  .order-card-ck-done { flex: 1; text-align: center; font-size: 0.8rem; color: var(--success); font-weight: 600; }
+
+  /* Order detail */
+  .order-detail-grid { grid-template-columns: 1fr; }
+
+  /* Sticky bar (show) */
+  .order-sticky-bar {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: var(--white);
+    border-top: 1px solid var(--border);
+    padding: 10px 16px;
+    padding-bottom: calc(10px + env(safe-area-inset-bottom));
+    box-shadow: 0 -4px 16px rgba(26,26,46,0.10);
+    z-index: 100;
+  }
+  /* Prevent content hidden behind sticky bar */
+  .admin-content { padding-bottom: 80px; }
 }

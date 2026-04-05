@@ -68,6 +68,9 @@ const orderLabels: Record<string, string> = { pending: 'Chờ xử lý', confirm
   <div class="card">
     <div class="card-header">
       <span class="card-title">📋 Đơn hàng ({orders.length})</span>
+      {orders.length > 0 && (
+        <button id="btn-csv-orders" class="btn btn-outline btn-sm" style="margin-left:auto">⬇ Xuất CSV đơn hàng</button>
+      )}
     </div>
     {orders.length === 0 ? (
       <div class="card-body" style="color:var(--text-muted)">Không có đơn hàng nào.</div>
@@ -113,11 +116,79 @@ const orderLabels: Record<string, string> = { pending: 'Chờ xử lý', confirm
           </tbody>
         </table>
       </div>
+
+      <!-- Mobile card list (hidden on desktop) -->
+      <div class="order-card-list">
+        {orders.map(o => (
+          <div class="order-card">
+            <div class="order-card-top">
+              <a href={`/admin/orders/${o.id}`} class="order-card-id">#{o.id}</a>
+              <span class="order-card-date">{fmtDate(o.created_at)}</span>
+            </div>
+            <div class="order-card-customer">
+              <strong>{o.customer_name}</strong>
+              <span>{o.phone}</span>
+            </div>
+            <div class="order-card-meta">
+              <span class="order-card-total">{fmtVnd(o.total)}</span>
+              <span class={`badge badge-${o.payment_status}`}>{paymentLabels[o.payment_status] ?? o.payment_status}</span>
+              <span class={`badge badge-${o.order_status}`}>{orderLabels[o.order_status] ?? o.order_status}</span>
+            </div>
+            <div class="order-card-actions">
+              {o.payment_status === 'awaiting' ? (
+                <form action="/admin/orders" method="POST" style="flex:1">
+                  <input type="hidden" name="order_id" value={o.id} />
+                  <button type="submit" class="btn btn-success" style="width:100%">✓ Xác nhận CK</button>
+                </form>
+              ) : (
+                <span class="order-card-ck-done">✓ Đã CK</span>
+              )}
+              <a href={`/admin/orders/${o.id}`} class="btn btn-outline">Chi tiết</a>
+            </div>
+          </div>
+        ))}
+      </div>
     )}
   </div>
 
+  <script type="application/json" id="orders-data" set:html={JSON.stringify(orders.map(o => ({
+    id: o.id,
+    customer: o.customer_name,
+    items: o.items,
+    total: o.total,
+  })))}></script>
+  <script>
+    const btnOrders = document.getElementById('btn-csv-orders');
+    if (btnOrders) {
+      btnOrders.addEventListener('click', () => {
+        const orders = JSON.parse(document.getElementById('orders-data').textContent);
+        const headers = ['Mã đơn','Khách hàng','Sản phẩm','Màu','Size','Số lượng','Đơn giá','Thành tiền'];
+        let csv = '\uFEFF' + headers.join(',') + '\n';
+        for (const o of orders) {
+          for (const item of o.items) {
+            const row = [
+              o.id,
+              o.customer,
+              item.name,
+              item.color ?? '',
+              item.size ?? '',
+              item.qty,
+              item.unit_price,
+              item.qty * item.unit_price,
+            ].map(v => `"${String(v).replace(/"/g, '""')}"`);
+            csv += row.join(',') + '\n';
+          }
+        }
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+        a.download = 'don-hang.csv';
+        a.click();
+      });
+    }
+  </script>
+
   <!-- Pagination -->
-  {orders.length === 20 && (
+  {orders.length === 200 && (
     <div class="pagination">
       {filters.page > 1 && (
         <a class="page-btn" href={`/admin/orders?page=${filters.page - 1}&payment_status=${filters.payment_status ?? ''}&order_status=${filters.order_status ?? ''}`}>←</a>

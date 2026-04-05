@@ -29,11 +29,11 @@ const orderLabels: Record<string, string> = { pending: 'Chờ xử lý', confirm
           <div class="stat-value">{stats?.total_orders ?? 0}</div>
           <div class="stat-sub">tổng đợt này</div>
         </div>
-        <div class="stat-card accent-red">
+        <a href="/admin/orders?payment_status=awaiting" class="stat-card accent-red stat-card-link">
           <div class="stat-label">Chờ xác nhận CK</div>
           <div class="stat-value">{stats?.pending_payment ?? 0}</div>
-          <div class="stat-sub">đơn</div>
-        </div>
+          <div class="stat-sub">Tap để xem →</div>
+        </a>
         <div class="stat-card accent-teal">
           <div class="stat-label">Đã xác nhận</div>
           <div class="stat-value">{stats?.confirmed_orders ?? 0}</div>

@@ -63,7 +63,7 @@ const ordLabels: Record<string, string> = { pending: 'Chờ xử lý', confirmed
     <div class="alert alert-error">Chỉ có thể xác nhận đơn khi thanh toán đã được duyệt.</div>
   )}
 
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+  <div class="order-detail-grid">
     <!-- Order info -->
     <div class="card">
       <div class="card-header"><span class="card-title">📋 Thông tin đơn</span></div>
@@ -187,5 +187,26 @@ const ordLabels: Record<string, string> = { pending: 'Chờ xử lý', confirmed
         </div>
       </div>
     </div>
+  </div>
+
+  <!-- Sticky mobile action bar -->
+  <div class="order-sticky-bar">
+    {order.payment_status === 'awaiting' && (
+      <form action={`/admin/orders/${order.id}`} method="POST" style="flex:1">
+        <input type="hidden" name="action" value="verify_payment" />
+        <button type="submit" class="btn btn-success" style="width:100%;min-height:48px">
+          ✓ Xác nhận CK
+        </button>
+      </form>
+    )}
+    <form action={`/admin/orders/${order.id}`} method="POST" style="flex:1;display:flex;gap:6px">
+      <input type="hidden" name="action" value="update_status" />
+      <select class="form-select" name="order_status" style="flex:1">
+        {['pending','confirmed','shipping','done','cancelled'].map(s => (
+          <option value={s} selected={order.order_status === s}>{ordLabels[s]}</option>
+        ))}
+      </select>
+      <button type="submit" class="btn btn-outline" style="min-height:48px;white-space:nowrap">Cập nhật</button>
+    </form>
   </div>
 </AdminLayout>
