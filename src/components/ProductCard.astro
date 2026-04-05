@@ -16,7 +16,7 @@ function fmtPrice(p: number) {
 ---
 
 <div class="product-card" data-product-id={product.id}>
-  <!-- Image area -->
+  <!-- Image area (overflow:hidden in CSS — thumbnails must be outside this div) -->
   <div class="product-card-img">
     {isSecret ? (
       <div class="secret-overlay">
@@ -33,6 +33,48 @@ function fmtPrice(p: number) {
       />
     )}
   </div>
+
+  {/* Thumbnail strip — outside .product-card-img to avoid overflow:hidden clipping */}
+  {!isSecret && product.has_variants && vc && (
+    <div class="img-thumbs" id={`thumbs-${product.id}`}>
+      {/* Color-specific images (default: first color) */}
+      {vc.colors[0]?.images?.map((imgKey, i) => (
+        <button
+          class={`img-thumb${i === 0 ? ' active' : ''}`}
+          data-src={`/img/${imgKey}`}
+          aria-label={i === 0 ? 'Mặt trước' : 'Mặt sau'}
+        >
+          <img src={`/img/${imgKey}`} alt={i === 0 ? 'Trước' : 'Sau'} loading="lazy" />
+        </button>
+      ))}
+
+      {/* Static: Bảng màu CT100 — không thay đổi khi switch màu */}
+      {vc.color_chart_image && (
+        <button
+          class="img-thumb"
+          data-src={`/img/${vc.color_chart_image}`}
+          data-static="true"
+          aria-label="Bảng màu"
+          title="Bảng màu Cotton CT100"
+        >
+          <img src={`/img/${vc.color_chart_image}`} alt="Bảng màu" loading="lazy" />
+        </button>
+      )}
+
+      {/* Static: Bảng size — không thay đổi khi switch màu */}
+      {vc.size_chart_image && (
+        <button
+          class="img-thumb"
+          data-src={`/img/${vc.size_chart_image}`}
+          data-static="true"
+          aria-label="Bảng size"
+          title="Bảng size"
+        >
+          <img src={`/img/${vc.size_chart_image}`} alt="Bảng size" loading="lazy" />
+        </button>
+      )}
+    </div>
+  )}
 
   <!-- Body -->
   <div class="product-card-body">
@@ -132,10 +174,43 @@ function fmtPrice(p: number) {
 
 <style>
   /* Color swatch colors — hardcoded for the 4 t-shirt colors */
-  [data-slug="blue"]  { background: #1A5F7A !important; }
+  [data-slug="blue"]  { background: #001A8C !important; }
   [data-slug="black"] { background: #1a1a1a !important; }
   [data-slug="red"]   { background: #8B1A2E !important; }
   [data-slug="white"] { background: #f5f5f5 !important; border: 2px solid #ccc !important; }
+
+  /* Thumbnail strip */
+  .img-thumbs {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+    padding: 8px 8px 0;
+    background: #f9f9f9;
+  }
+  .img-thumb {
+    width: 56px;
+    height: 56px;
+    border: 2px solid transparent;
+    border-radius: 6px;
+    overflow: hidden;
+    padding: 0;
+    cursor: pointer;
+    background: #fff;
+    transition: border-color 0.15s;
+    flex-shrink: 0;
+  }
+  .img-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .img-thumb.active {
+    border-color: var(--koi-red, #c0392b);
+  }
+  .img-thumb:hover:not(.active) {
+    border-color: #bbb;
+  }
 </style>
 
 <script>
@@ -160,10 +235,40 @@ function fmtPrice(p: number) {
         btn.classList.add('active');
         const label = card.querySelector<HTMLElement>('.variant-selected-color');
         if (label) label.textContent = btn.title;
-        // Update hero image
         const images: string[] = JSON.parse(btn.dataset.images || '[]');
+        // Update hero image to front of selected color
         const img = document.getElementById(`product-img-${productId}`) as HTMLImageElement | null;
         if (img && images[0]) img.src = `/img/${images[0]}`;
+        // Sync thumbnail strip to new color's images (skip static thumbs)
+        const thumbsEl = document.getElementById(`thumbs-${productId}`);
+        if (thumbsEl) {
+          let colorIdx = 0;
+          thumbsEl.querySelectorAll<HTMLButtonElement>('.img-thumb').forEach(thumb => {
+            if (thumb.dataset.static === 'true') return; // skip static thumbs
+            const src = images[colorIdx] ? `/img/${images[colorIdx]}` : null;
+            if (src) {
+              thumb.dataset.src = src;
+              const thumbImg = thumb.querySelector('img');
+              if (thumbImg) thumbImg.src = src;
+              thumb.style.display = '';
+            } else {
+              thumb.style.display = 'none';
+            }
+            thumb.classList.toggle('active', colorIdx === 0);
+            colorIdx++;
+          });
+        }
+      });
+    });
+
+    // ── Thumbnail clicks ──────────────────────────────────────
+    const thumbsEl = document.getElementById(`thumbs-${productId}`);
+    thumbsEl?.querySelectorAll<HTMLButtonElement>('.img-thumb').forEach(thumb => {
+      thumb.addEventListener('click', () => {
+        const mainImg = document.getElementById(`product-img-${productId}`) as HTMLImageElement | null;
+        if (mainImg && thumb.dataset.src) mainImg.src = thumb.dataset.src;
+        thumbsEl.querySelectorAll('.img-thumb').forEach(t => t.classList.remove('active'));
+        thumb.classList.add('active');
       });
     });
 

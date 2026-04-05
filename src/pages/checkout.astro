@@ -19,10 +19,13 @@ if (Astro.request.method === 'POST') {
   const delivery_method = form.get('delivery_method')?.toString() as DeliveryMethod;
   const address = form.get('address')?.toString().trim() || null;
   const notes = form.get('notes')?.toString().trim() || null;
+  const rawFbUrl = form.get('facebook_url')?.toString().trim() || null;
+  // Only accept valid http/https URLs, max 200 chars
+  const facebook_url = rawFbUrl && /^https?:\/\/.{3,}/.test(rawFbUrl) ? rawFbUrl.slice(0, 200) : null;
   const itemsJson = form.get('items')?.toString() ?? '';
 
   // Validate required fields
-  if (!customer_name || !phone || !delivery_method || !itemsJson) {
+  if (!customer_name || !phone || !delivery_method || !itemsJson || !facebook_url) {
     return Astro.redirect('/checkout?error=missing');
   }
   if (delivery_method === 'ship_after_27apr' && !address) {
@@ -66,6 +69,7 @@ if (Astro.request.method === 'POST') {
     shipping_fee,
     total,
     notes: safeNotes,
+    facebook_url,
   });
 
   return Astro.redirect(`/payment?order=${orderId}`);
@@ -110,13 +114,13 @@ const errorMessages: Record<string, string> = {
         <a href="/" class="btn btn-primary" style="margin-top:1.5rem">← Về trang chủ</a>
       </div>
     ) : (
+      <h1 style="font-family:var(--font-display);font-size:1.5rem;color:var(--navy-deep);margin-bottom:1.5rem;padding-top:2rem">
+        Thông Tin Đặt Hàng
+      </h1>
+
       <div class="checkout-layout">
         <!-- Left: form -->
         <div>
-          <h1 style="font-family:var(--font-display);font-size:1.5rem;color:var(--navy-deep);margin-bottom:1.5rem;padding-top:2rem">
-            Thông Tin Đặt Hàng
-          </h1>
-
           {errorParam && (
             <div class="alert alert-error">{errorMessages[errorParam] ?? 'Đã có lỗi xảy ra.'}</div>
           )}
@@ -137,6 +141,11 @@ const errorMessages: Record<string, string> = {
                 <label class="form-label" for="phone">Số điện thoại <span class="required">*</span></label>
                 <input class="form-input" type="tel" id="phone" name="phone" required placeholder="0912 345 678" autocomplete="tel" pattern="[0-9+\s\-]{9,15}" />
               </div>
+
+              <div class="form-group" style="margin-bottom:0">
+                <label class="form-label" for="facebook_url">Link Facebook <span class="required">*</span></label>
+                <input class="form-input" type="url" id="facebook_url" name="facebook_url" required placeholder="https://facebook.com/ten.cua.ban" autocomplete="url" />
+              </div>
             </div>
 
             <div class="form-card" style="margin-top:1rem">
@@ -147,33 +156,28 @@ const errorMessages: Record<string, string> = {
                   <input type="radio" name="delivery_method" value="pickup_practice" required />
                   <div>
                     <div style="font-weight:600;font-size:0.9rem">Nhận hàng tại buổi tập</div>
-                    <div style="font-size:0.8rem;color:var(--slate)">Dành cho thành viên SIE Yosakoi</div>
+                    <div style="font-size:0.8rem;color:var(--slate)">Đối với thành viên SIE Yosakoi</div>
                   </div>
                 </label>
 
-                <label class="radio-option" id="festival-option">
-                  <input type="radio" name="delivery_method" value="pickup_festival_sat" id="radio-festival" />
-                  <div>
-                    <div style="font-weight:600;font-size:0.9rem">Nhận hàng tại Liên hoan Yosakoi Việt Nam 2026</div>
-                    <div class="radio-sub" id="festival-sub">
-                      <div class="radio-group" style="margin-top:8px">
-                        <label class="radio-option" style="background:var(--bg-offwhite)">
-                          <input type="radio" name="delivery_method" value="pickup_festival_sat" />
-                          <div style="font-size:0.875rem">Thứ 7, 25 tháng 4 năm 2026</div>
-                        </label>
-                        <label class="radio-option" style="background:var(--bg-offwhite)">
-                          <input type="radio" name="delivery_method" value="pickup_festival_sun" />
-                          <div style="font-size:0.875rem">Chủ nhật, 26 tháng 4 năm 2026</div>
-                        </label>
-                      </div>
-                    </div>
+                <div class="radio-option festival-option" id="festival-option">
+                  <div style="font-weight:600;font-size:0.9rem">Nhận hàng trực tiếp tại Liên hoan Yosakoi Việt Nam 2026</div>
+                  <div class="festival-date-grid">
+                    <label class="festival-date-btn">
+                      <input type="radio" name="delivery_method" value="pickup_festival_sat" />
+                      <span>Thứ 7, 25/4/2026</span>
+                    </label>
+                    <label class="festival-date-btn">
+                      <input type="radio" name="delivery_method" value="pickup_festival_sun" />
+                      <span>Chủ nhật, 26/4/2026</span>
+                    </label>
                   </div>
-                </label>
+                </div>
 
                 <label class="radio-option">
                   <input type="radio" name="delivery_method" value="ship_after_27apr" id="radio-ship" />
                   <div>
-                    <div style="font-weight:600;font-size:0.9rem">Nhận hàng sau ngày 27 tháng 4 năm 2026</div>
+                    <div style="font-weight:600;font-size:0.9rem">Nhận hàng qua chuyển phát sau ngày 27/4</div>
                     <div style="font-size:0.8rem;color:var(--koi-red);font-weight:600">Phí ship: 30.000đ</div>
                   </div>
                 </label>
@@ -202,7 +206,7 @@ const errorMessages: Record<string, string> = {
         </div>
 
         <!-- Right: order summary -->
-        <aside class="order-summary" style="padding-top:2rem">
+        <aside class="order-summary">
           <div class="form-card">
             <div class="form-card-title">Đơn hàng của bạn</div>
             <div class="summary-items" id="summary-items">
