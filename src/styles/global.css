@@ -22,7 +22,7 @@
   --koi-purple:   #C77DFF;
 
   /* Text / border */
-  --navy-deep:    #1A1A2E;
+  --navy-deep:    #1E3A8A;
   --charcoal:     #2C2C2C;
   --slate:        #5A5A5A;
   --mist:         #9A9A9A;
@@ -114,7 +114,7 @@ button { cursor: pointer; font-family: var(--font-body); }
 /* ── Header ──────────────────────────────────────────────── */
 .site-header {
   position: sticky;
-  top: 0;
+  top: 44px;
   z-index: 100;
   background: rgba(255,255,255,0.92);
   backdrop-filter: blur(12px);
@@ -143,7 +143,7 @@ button { cursor: pointer; font-family: var(--font-body); }
 .cart-btn {
   position: relative;
   background: var(--bg-sky);
-  border: 2px solid var(--navy-deep);
+  border: 2px solid var(--border);
   border-radius: var(--radius-md);
   padding: var(--space-2) var(--space-3);
   font-weight: 700;
@@ -171,17 +171,66 @@ button { cursor: pointer; font-family: var(--font-body); }
 }
 .cart-count[data-count="0"] { display: none; }
 
-/* ── Deadline bar ────────────────────────────────────────── */
-.deadline-bar {
+/* ── Sticky countdown bar ────────────────────────────────── */
+.countdown-sticky-bar {
+  position: sticky;
+  top: 0;
+  z-index: 101;
   background: linear-gradient(135deg, var(--navy-deep) 0%, #2a2a4e 100%);
   color: #fff;
-  text-align: center;
-  padding: var(--space-2) var(--space-4);
-  font-size: 0.8rem;
-  font-weight: 500;
-  letter-spacing: 0.03em;
+  height: 44px;
 }
-.deadline-bar strong { color: var(--koi-orange); }
+.csb-inner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0 var(--space-4);
+  height: 100%;
+  overflow: hidden;
+}
+.csb-name {
+  font-weight: 700;
+  font-family: var(--font-display);
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+.csb-label {
+  font-size: 0.8rem;
+  opacity: 0.85;
+  white-space: nowrap;
+}
+.csb-sep { opacity: 0.4; }
+.csb-deadline {
+  font-size: 0.75rem;
+  opacity: 0.85;
+  white-space: nowrap;
+}
+.csb-inner .countdown {
+  margin-left: auto;
+}
+.csb-inner .countdown-unit {
+  background: rgba(255,255,255,0.15);
+  min-width: 36px;
+  padding: 1px 6px;
+}
+.csb-inner .countdown-num { font-size: 1rem; }
+.csb-inner .countdown-sep { color: rgba(255,255,255,0.5); font-size: 1rem; }
+@media (max-width: 480px) {
+  .csb-name, .csb-sep, .csb-deadline { display: none; }
+  .csb-inner .countdown { margin-left: 0; }
+  .csb-inner {
+    justify-content: center;
+    gap: var(--space-2);
+  }
+  .csb-inner::before {
+    content: '⏳ Còn lại:';
+    font-size: 0.75rem;
+    opacity: 0.85;
+    white-space: nowrap;
+  }
+}
 
 /* ── Hero ────────────────────────────────────────────────── */
 .hero {
@@ -200,6 +249,9 @@ button { cursor: pointer; font-family: var(--font-body); }
   object-fit: cover;
   object-position: center;
   opacity: 0.45;
+}
+@media (max-width: 768px) {
+  .hero-bg { object-position: 80% center; }
 }
 /* Gradient + fish-scale overlay on hero */
 .hero::after {
@@ -254,6 +306,7 @@ button { cursor: pointer; font-family: var(--font-body); }
 .hero-cta {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: var(--space-2);
   background: var(--koi-red);
   color: #fff;
@@ -263,10 +316,15 @@ button { cursor: pointer; font-family: var(--font-body); }
   border-radius: var(--radius-md);
   border: none;
   min-height: 48px;
+  line-height: 1;
+  box-sizing: border-box;
+  cursor: pointer;
   transition: background 0.2s, transform 0.15s;
   text-decoration: none;
 }
 .hero-cta:hover { background: #c0302e; transform: translateY(-1px); text-decoration: none; }
+.hero-cta-ghost { background: rgba(255,255,255,0.15); color: #fff; border: 2px solid rgba(255,255,255,0.5); }
+.hero-cta-ghost:hover { background: rgba(255,255,255,0.25); transform: translateY(-1px); }
 
 /* ── Batch status strip ──────────────────────────────────── */
 .batch-strip {
@@ -343,6 +401,7 @@ button { cursor: pointer; font-family: var(--font-body); }
 }
 @media (max-width: 480px) {
   .product-grid { grid-template-columns: 1fr; }
+  .product-card-name { font-size: 0.95rem; }
 }
 
 /* ── Product card ──────────────────────────────────────────── */
@@ -426,7 +485,7 @@ button { cursor: pointer; font-family: var(--font-body); }
 .size-btn:hover { border-color: var(--koi-navy); }
 .size-btn.active { background: var(--navy-deep); color: #fff; border-color: var(--navy-deep); }
 .qty-row { display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-3); }
-.qty-control { display: flex; align-items: center; border: 2px solid var(--navy-deep); border-radius: var(--radius-sm); overflow: hidden; }
+.qty-control { display: flex; align-items: center; border: 2px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; }
 .qty-btn { background: var(--bg-sky); border: none; width: 36px; height: 36px; font-size: 1.2rem; font-weight: 700; color: var(--navy-deep); cursor: pointer; }
 .qty-btn:hover { background: var(--koi-teal); }
 .qty-input { border: none; width: 44px; text-align: center; font-size: 1rem; font-weight: 700; font-family: var(--font-body); }
@@ -455,8 +514,8 @@ button { cursor: pointer; font-family: var(--font-body); }
 .btn-primary:hover { background: #2a2a4e; box-shadow: var(--shadow-sm); }
 .btn-koi { background: var(--koi-red); color: #fff; border-color: var(--koi-red); }
 .btn-koi:hover { background: #c0302e; }
-.btn-outline { background: transparent; color: var(--navy-deep); border-color: var(--navy-deep); }
-.btn-outline:hover { background: var(--bg-sky); }
+.btn-outline { background: transparent; color: var(--navy-deep); border-color: var(--border); }
+.btn-outline:hover { background: var(--bg-sky); border-color: var(--navy-deep); }
 .btn-full { width: 100%; }
 
 /* ── Cart drawer ──────────────────────────────────────────── */
@@ -555,6 +614,7 @@ button { cursor: pointer; font-family: var(--font-body); }
   font-size: 0.875rem;
 }
 .site-footer a { color: var(--koi-teal); }
+.footer-tagline { margin-top: var(--space-2); font-size: 0.8rem; color: rgba(255,255,255,0.45); letter-spacing: 0.04em; }
 .footer-koinobori {
   display: flex; justify-content: center; gap: var(--space-2); margin-bottom: var(--space-4);
   font-size: 1.5rem;
@@ -636,7 +696,7 @@ button { cursor: pointer; font-family: var(--font-body); }
 .festival-date-btn:has(input:checked) { border-color: var(--navy-deep); background: var(--bg-sky); font-weight: 600; }
 
 /* ── Order summary card ───────────────────────────────────── */
-.order-summary { position: sticky; top: 72px; }
+.order-summary { position: sticky; top: 72px; } /* 56px header + 16px gap */
 .summary-items { margin-bottom: var(--space-4); display: flex; flex-direction: column; gap: var(--space-2); }
 .summary-item { display: flex; justify-content: space-between; font-size: 0.875rem; color: var(--charcoal); }
 .summary-item-name { flex: 1; min-width: 0; padding-right: var(--space-3); }

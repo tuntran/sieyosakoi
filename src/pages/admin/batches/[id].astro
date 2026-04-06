@@ -1,7 +1,7 @@
 ---
 import { env } from 'cloudflare:workers';
 import AdminLayout from '../../../layouts/AdminLayout.astro';
-import { getBatches, getOrdersByBatch, getDashboardStats } from '../../../lib/db';
+import { getBatches, getOrdersByBatch, getDashboardStats, getSalesSummary } from '../../../lib/db';
 
 const db = env.DB;
 const { id } = Astro.params;
@@ -13,14 +13,22 @@ if (!batch) return Astro.redirect('/admin/batches');
 
 const stats = await getDashboardStats(db, batch.id);
 const orders = await getOrdersByBatch(db, { batch_id: batch.id, page: 1 });
+const summary = await getSalesSummary(db, batch.id);
 
 function fmtVnd(n: number) { return n.toLocaleString('vi-VN') + 'đ'; }
 function fmtDate(ts: number | null) {
   if (!ts) return '—';
   return new Date(ts * 1000).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
 }
+function buildVariantName(row: { product_name: string; color: string | null; size: string | null }): string {
+  let n = row.product_name;
+  if (row.color) n += ` - ${row.color}`;
+  if (row.size) n += ` - ${row.size}`;
+  return n;
+}
+
 const payLabels: Record<string, string> = { awaiting: 'Chờ CK', verified: 'Đã CK', refunded: 'Hoàn tiền' };
-const ordLabels: Record<string, string> = { pending: 'Chờ xử lý', confirmed: 'Xác nhận', shipping: 'Đang giao', done: 'Xong', cancelled: 'Đã huỷ' };
+const ordLabels: Record<string, string> = { pending: 'Chờ xử lý', confirmed: 'Xác nhận', done: 'Xong', cancelled: 'Đã huỷ' };
 const statusLabel: Record<string, string> = { open: 'Đang mở', closed: 'Đã đóng', draft: 'Nháp' };
 ---
 
@@ -52,6 +60,51 @@ const statusLabel: Record<string, string> = { open: 'Đang mở', closed: 'Đã 
     <div class="stat-card accent-teal"><div class="stat-label">Đã xác nhận</div><div class="stat-value">{stats.confirmed_orders}</div></div>
     <div class="stat-card accent-orange"><div class="stat-label">Doanh thu</div><div class="stat-value" style="font-size:1.1rem">{fmtVnd(stats.total_revenue)}</div></div>
   </div>
+
+  <!-- Sales summary + CSV 1 export -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-header">
+      <span class="card-title">Tổng hợp sản phẩm (đã thanh toán)</span>
+      {summary.length > 0 && (
+        <button id="btn-csv-producer" class="btn btn-outline btn-sm" style="margin-left:auto">⬇ Xuất CSV nhà sản xuất</button>
+      )}
+    </div>
+    {summary.length === 0 ? (
+      <div class="card-body" style="color:var(--text-muted)">Chưa có đơn đã thanh toán.</div>
+    ) : (
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr><th>Tên mẫu mã</th><th style="text-align:right">Số lượng</th></tr>
+          </thead>
+          <tbody>
+            {summary.map(row => (
+              <tr>
+                <td>{buildVariantName(row)}</td>
+                <td style="text-align:right;font-weight:700">{row.total_qty}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )}
+  </div>
+
+  <script type="application/json" id="summary-data" set:html={JSON.stringify(summary.map(r => ({ name: buildVariantName(r), qty: r.total_qty })))}></script>
+  <script>
+    const btn = document.getElementById('btn-csv-producer');
+    if (btn) {
+      btn.addEventListener('click', () => {
+        const rows = JSON.parse(document.getElementById('summary-data').textContent);
+        let csv = '\uFEFF' + 'Tên mẫu mã,Số lượng\n';
+        for (const r of rows) csv += `"${r.name.replace(/"/g, '""')}",${r.qty}\n`;
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+        a.download = 'tong-hop-san-pham.csv';
+        a.click();
+      });
+    }
+  </script>
 
   <!-- Orders list -->
   <div class="card">

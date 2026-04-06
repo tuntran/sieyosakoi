@@ -1,15 +1,19 @@
 ---
 import { env } from 'cloudflare:workers';
 import AdminLayout from '../../../layouts/AdminLayout.astro';
-import { getOpenBatch, getOrdersByBatch, updatePaymentStatus } from '../../../lib/db';
+import { getOpenBatch, getOrdersByBatch, updatePaymentStatus, updateOrderStatus } from '../../../lib/db';
 
 const db = env.DB;
 
-// Quick verify payment action
 if (Astro.request.method === 'POST') {
   const form = await Astro.request.formData();
+  const action = form.get('action')?.toString();
   const orderId = form.get('order_id')?.toString();
-  if (orderId) await updatePaymentStatus(db, orderId, 'verified');
+  if (action === 'verify_payment' && orderId) {
+    await updatePaymentStatus(db, orderId, 'verified');
+  } else if (action === 'mark_done' && orderId) {
+    await updateOrderStatus(db, orderId, 'done');
+  }
   return Astro.redirect('/admin/orders');
 }
 
@@ -33,7 +37,7 @@ const deliveryShort: Record<string, string> = {
   pickup_festival_sun: 'LH CN', ship_after_27apr: 'Giao hàng',
 };
 const paymentLabels: Record<string, string> = { awaiting: 'Chờ CK', verified: 'Đã CK', refunded: 'Hoàn tiền' };
-const orderLabels: Record<string, string> = { pending: 'Chờ xử lý', confirmed: 'Xác nhận', shipping: 'Đang giao', done: 'Xong', cancelled: 'Huỷ' };
+const orderLabels: Record<string, string> = { pending: 'Chờ xử lý', confirmed: 'Xác nhận', done: 'Xong', cancelled: 'Huỷ' };
 ---
 
 <AdminLayout title="Đơn hàng" currentPage="orders">
@@ -55,7 +59,6 @@ const orderLabels: Record<string, string> = { pending: 'Chờ xử lý', confirm
           <option value="">Tất cả</option>
           <option value="pending"   selected={filters.order_status === 'pending'}>Chờ xử lý</option>
           <option value="confirmed" selected={filters.order_status === 'confirmed'}>Xác nhận</option>
-          <option value="shipping"  selected={filters.order_status === 'shipping'}>Đang giao</option>
           <option value="done"      selected={filters.order_status === 'done'}>Xong</option>
           <option value="cancelled" selected={filters.order_status === 'cancelled'}>Huỷ</option>
         </select>
@@ -105,8 +108,16 @@ const orderLabels: Record<string, string> = { pending: 'Chờ xử lý', confirm
                 <td>
                   {o.payment_status === 'awaiting' && (
                     <form action="/admin/orders" method="POST" class="action-form">
+                      <input type="hidden" name="action" value="verify_payment" />
                       <input type="hidden" name="order_id" value={o.id} />
                       <button type="submit" class="btn btn-success btn-sm">✓ Duyệt CK</button>
+                    </form>
+                  )}
+                  {o.order_status === 'confirmed' && (
+                    <form action="/admin/orders" method="POST" class="action-form">
+                      <input type="hidden" name="action" value="mark_done" />
+                      <input type="hidden" name="order_id" value={o.id} />
+                      <button type="submit" class="btn btn-primary btn-sm">📦 Đã giao</button>
                     </form>
                   )}
                   <a href={`/admin/orders/${o.id}`} class="btn btn-outline btn-sm" style="margin-left:4px">Chi tiết</a>
@@ -137,11 +148,19 @@ const orderLabels: Record<string, string> = { pending: 'Chờ xử lý', confirm
             <div class="order-card-actions">
               {o.payment_status === 'awaiting' ? (
                 <form action="/admin/orders" method="POST" style="flex:1">
+                  <input type="hidden" name="action" value="verify_payment" />
                   <input type="hidden" name="order_id" value={o.id} />
                   <button type="submit" class="btn btn-success" style="width:100%">✓ Xác nhận CK</button>
                 </form>
               ) : (
                 <span class="order-card-ck-done">✓ Đã CK</span>
+              )}
+              {o.order_status === 'confirmed' && (
+                <form action="/admin/orders" method="POST" style="flex:1">
+                  <input type="hidden" name="action" value="mark_done" />
+                  <input type="hidden" name="order_id" value={o.id} />
+                  <button type="submit" class="btn btn-primary" style="width:100%">📦 Đã giao</button>
+                </form>
               )}
               <a href={`/admin/orders/${o.id}`} class="btn btn-outline">Chi tiết</a>
             </div>

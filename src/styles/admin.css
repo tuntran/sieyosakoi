@@ -200,7 +200,6 @@ img { display: block; max-width: 100%; }
 .badge-verified  { background: var(--success-bg);  color: var(--success); }
 .badge-refunded  { background: #EDE7F6;             color: #6A1B9A; }
 .badge-confirmed { background: var(--info-bg);      color: var(--info); }
-.badge-shipping  { background: #EDE7F6;             color: #6A1B9A; }
 .badge-done      { background: var(--success-bg);   color: var(--success); }
 .badge-cancelled { background: var(--border);       color: var(--text-muted); }
 .badge-open      { background: #FFF9C4;             color: #6D4C00; }

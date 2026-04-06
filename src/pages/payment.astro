@@ -23,7 +23,7 @@ const deliveryLabels: Record<string, string> = {
 };
 
 // Build VietQR URL
-const addInfo = encodeURIComponent(`sie 2026 ${order.id} ${order.phone}`);
+const addInfo = encodeURIComponent(`${order.id} ${order.phone}`);
 const accountName = encodeURIComponent('Vu Khanh Chi');
 const vietQrUrl = `https://img.vietqr.io/image/TCB-19040070626015-compact2.png?amount=${order.total}&addInfo=${addInfo}&accountName=${accountName}`;
 ---
@@ -35,6 +35,7 @@ const vietQrUrl = `https://img.vietqr.io/image/TCB-19040070626015-compact2.png?a
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Thanh toán — {order.id} · SIE Yosakoi Shop</title>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <style>.site-header { top: 0; }</style>
 </head>
 <body>
 
@@ -46,8 +47,8 @@ const vietQrUrl = `https://img.vietqr.io/image/TCB-19040070626015-compact2.png?a
 
 <!-- ── Payment hero ─────────────────────────────────── -->
 <div class="payment-hero">
-  <h1 class="payment-heading">Cảm ơn bạn đã đặt hàng! 🎉</h1>
-  <p class="payment-subhead">Mã đơn: <strong style="color:var(--navy-deep)">{order.id}</strong> · Vui lòng chuyển khoản để xác nhận đơn hàng.</p>
+  <h1 class="payment-heading">Cảm ơn bạn đã ủng hộ SIE Yosakoi Team!</h1>
+  <p class="payment-subhead">Mã đơn: <strong style="color:var(--navy-deep)">{order.id}</strong> · Sau khi thanh toán bạn có thể kiểm tra trạng thái ở mục <a href="/orders" style="color:var(--navy-deep)">Tra cứu đơn</a>.</p>
 </div>
 
 <main>
@@ -81,20 +82,27 @@ const vietQrUrl = `https://img.vietqr.io/image/TCB-19040070626015-compact2.png?a
           <div class="bank-detail-row" style="border-bottom:none">
             <span class="bank-detail-label">Nội dung CK</span>
             <span class="bank-detail-value">
-              <span id="transfer-content">sie 2026 {order.id} {order.phone}</span>
-              <button class="copy-btn" data-copy={`sie 2026 ${order.id} ${order.phone}`}>Sao chép</button>
+              <span id="transfer-content">{order.id} {order.phone}</span>
+              <button class="copy-btn" data-copy={`${order.id} ${order.phone}`}>Sao chép</button>
             </span>
           </div>
-        </div>
 
-        <div class="qr-wrap" style="margin-top:1.5rem">
-          <img
-            src={vietQrUrl}
-            alt="VietQR chuyển khoản"
-            width="220"
-            loading="lazy"
-          />
-          <p style="font-size:0.8rem;color:var(--slate);text-align:center">Quét QR bằng app ngân hàng để chuyển tiền nhanh</p>
+          <div class="qr-wrap" style="margin-top:1.25rem">
+            <img
+              src={vietQrUrl}
+              alt="VietQR chuyển khoản"
+              width="220"
+              loading="lazy"
+            />
+            <p style="font-size:0.8rem;color:var(--slate);text-align:center;margin-top:0.5rem">Quét QR bằng app ngân hàng để chuyển tiền nhanh</p>
+            <a
+              href={`/api/qr-download?order=${order.id}`}
+              download={`qr-${order.id}.png`}
+              class="download-qr-btn"
+            >
+              ⬇️ Tải ảnh QR về máy
+            </a>
+          </div>
         </div>
       </div>
 
@@ -168,8 +176,8 @@ const vietQrUrl = `https://img.vietqr.io/image/TCB-19040070626015-compact2.png?a
 
     <!-- Note -->
     <div class="payment-note">
-      ℹ️ <strong>Lưu ý:</strong> Đơn hàng sẽ được xác nhận sau khi admin kiểm tra chuyển khoản.
-      Nếu cần hỗ trợ, liên hệ qua fanpage SIE Yosakoi.
+      ℹ️ Chúng mình sẽ xác nhận đơn hàng sau khi kiểm tra chuyển khoản.
+      Trong trường hợp cần hỗ trợ, vui lòng liên hệ fanpage <a href="https://www.facebook.com/sieyosakoiteam" target="_blank" rel="noopener" style="color:var(--navy-deep)">SIE Yosakoi Team</a> hoặc email: <a href="mailto:sieyosakoi@gmail.com" style="color:var(--navy-deep)">sieyosakoi@gmail.com</a>
     </div>
   </div>
 </main>

@@ -10,13 +10,6 @@ const db = env.DB;
 const batch = await getOpenBatch(db);
 const batchOpen = batch ? isBatchOpen(batch) : false;
 const products = batch ? await getProducts(db, batch.id) : [];
-
-function fmtDeadline(ts: number) {
-  return new Date(ts * 1000).toLocaleDateString('vi-VN', {
-    timeZone: 'Asia/Ho_Chi_Minh',
-    day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
-  });
-}
 ---
 
 <!doctype html>
@@ -30,10 +23,13 @@ function fmtDeadline(ts: number) {
 </head>
 <body>
 
-<!-- ── Deadline bar ──────────────────────────────────── -->
-{batch && batchOpen && (
-  <div class="deadline-bar">
-    ⏳ Hạn đặt hàng: <strong>23:59 ngày {fmtDeadline(batch.close_at!)}</strong>
+<!-- ── Sticky countdown bar ──────────────────────────── -->
+{batch && batchOpen && batch.close_at && (
+  <div class="countdown-sticky-bar">
+    <div class="csb-inner">
+      <span class="csb-label">Kết thúc sau</span>
+      <CountdownTimer deadline={batch.close_at} />
+    </div>
   </div>
 )}
 
@@ -60,43 +56,19 @@ function fmtDeadline(ts: number) {
   />
   <div class="hero-content container" style="max-width:900px">
     <h1 class="hero-title">SIE YOSAKOI TEAM<br/>Official Goods 2026</h1>
-    <p class="hero-sub">Áo phông đội, tenugui, standee &amp; móc khóa chibi —<br/>kỷ niệm Liên hoan Yosakoi Việt Nam 2026.</p>
-    {batch && batchOpen ? (
-      <button class="hero-cta" id="hero-shop-btn">Mua ngay →</button>
-    ) : (
-      <span style="display:inline-block;background:rgba(255,255,255,0.15);color:#fff;padding:12px 24px;border-radius:8px;font-weight:600">
-        Hiện không có đợt bán nào đang mở
-      </span>
-    )}
-  </div>
-</section>
 
-<!-- ── Batch status strip ─────────────────────────────── -->
-{batch && (
-  <div class="batch-strip">
-    <div class="container" style="max-width:900px">
-      <div class="batch-pulse"></div>
-      <div>
-        <div class="batch-name">{batch.name}</div>
-        {batch.close_at && (
-          <div class="batch-deadline">Kết thúc: {fmtDeadline(batch.close_at)}</div>
-        )}
-      </div>
-      {batchOpen && batch.close_at && (
-        <CountdownTimer deadline={batch.close_at} />
-      )}
-      {!batchOpen && (
-        <span style="margin-left:auto;font-weight:700;color:var(--koi-red)">Đã đóng</span>
-      )}
+    <div style="display:flex;gap:var(--space-3);flex-wrap:wrap;align-items:center">
+      <button class="hero-cta" id="hero-shop-btn">Xem sản phẩm →</button>
+      <a href="/orders" class="hero-cta hero-cta-ghost">Tra cứu đơn</a>
     </div>
   </div>
-)}
+</section>
 
 <!-- ── Products ───────────────────────────────────────── -->
 <main>
   <section class="section" id="products">
     <div class="container" style="max-width:900px">
-      {!batch || products.length === 0 ? (
+      {products.length === 0 ? (
         <div style="text-align:center;padding:4rem 0;color:var(--slate)">
           <div style="font-size:3rem;margin-bottom:1rem">🎀</div>
           <div style="font-size:1.1rem;font-weight:600">Hiện chưa có sản phẩm nào</div>
@@ -118,8 +90,7 @@ function fmtDeadline(ts: number) {
   <section class="tagline-section">
     <div class="container" style="max-width:900px;text-align:center;padding-block:var(--space-10)">
       <p class="tagline-text">
-        Cùng SIE YOSAKOI TEAM lưu giữ kỷ niệm 2026 🎏<br/>
-        Những món đồ nhỏ xinh gói trọn tinh thần của chúng mình.
+        Cùng SIE YOSAKOI TEAM lưu giữ kỷ niệm của bài diễn năm 2026 bằng những món đồ nhỏ xinh gói trọn tinh thần của chúng mình nhé 🎏
       </p>
     </div>
   </section>
@@ -129,6 +100,7 @@ function fmtDeadline(ts: number) {
 <footer class="site-footer">
   <div class="footer-koinobori">🎏🎏🎏</div>
   <p>© 2026 SIE Yosakoi Team · <a href="/orders">Tra cứu đơn</a> · <a href="/admin/login">Admin</a></p>
+  <p class="footer-tagline">Vietnam Yosakoi Festival 2026 | See you on stage!</p>
 </footer>
 
 <!-- ── Cart Drawer ─────────────────────────────────────── -->
@@ -246,7 +218,6 @@ function fmtDeadline(ts: number) {
     }
     saveCart(items);
     renderCart();
-    openCart();
   });
 
   // Drawer open/close
