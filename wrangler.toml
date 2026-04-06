@@ -1,21 +1,20 @@
 name = "sieyosakoi-shop"
 compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
-main = "dist/server/entry.mjs"
 assets = { directory = "dist/client" }
 
 [[d1_databases]]
 binding = "DB"
 database_name = "sieyosakoi-db"
-database_id = "placeholder-replace-after-create"
+database_id = "763d18b2-b8d5-490f-a6a5-0e70fd0e1e9e"
 
 [[kv_namespaces]]
 binding = "KV"
-id = "placeholder-replace-after-create"
+id = "2b07aeebacd74e5eb000e5fa431f5c22"
 
 [[r2_buckets]]
 binding = "R2"
 bucket_name = "sieyosakoi-images"
 
 [vars]
-SITE_URL = "http://localhost:4321"
+SITE_URL = "https://sieyosakoi.com"

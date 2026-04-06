@@ -41,8 +41,8 @@ INSERT OR IGNORE INTO products (id, batch_id, name, price, description, image_ur
 (
   'standee',
   'batch-2026-03',
-  'Set Standee Chibi Bài Diễn 2026',
-  0,
+  'Set 2 Standee Chibi Cưỡi Cá',
+  30000,
   'Kích thước: 3cm. Chất liệu: Mica. 🎀 Bí mật — sẽ tiết lộ khi nhận hàng!',
   '/img/products/secret.webp',
   '["products/secret.webp"]',
@@ -55,8 +55,8 @@ INSERT OR IGNORE INTO products (id, batch_id, name, price, description, image_ur
 (
   'keychain',
   'batch-2026-03',
-  'Set Móc Khóa Chibi Bài Diễn 2026',
-  0,
+  'Set 2 Móc Khóa Chibi Cán Hologram',
+  50000,
   'Kích thước: 4cm. Chất liệu: Mica, cán hologram. 🎀 Bí mật — sẽ tiết lộ khi nhận hàng!',
   '/img/products/secret.webp',
   '["products/secret.webp"]',
