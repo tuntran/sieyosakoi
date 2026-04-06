@@ -1,0 +1,294 @@
+---
+import { env } from 'cloudflare:workers';
+import { getOrdersByPhone } from '../lib/db';
+import type { Order } from '../types';
+import '../styles/global.css';
+
+const db = env.DB;
+const phoneParam = Astro.url.searchParams.get('phone')?.trim() ?? '';
+
+let orders: Order[] = [];
+let searched = false;
+
+if (phoneParam) {
+  searched = true;
+  orders = await getOrdersByPhone(db, phoneParam);
+}
+
+function fmtVnd(n: number) { return n.toLocaleString('vi-VN') + 'đ'; }
+function fmtDate(ts: number) {
+  return new Date(ts * 1000).toLocaleString('vi-VN', {
+    timeZone: 'Asia/Ho_Chi_Minh',
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  });
+}
+
+const deliveryLabels: Record<string, string> = {
+  pickup_practice:     'Nhận tại buổi tập',
+  pickup_festival_sat: 'Liên hoan Yosakoi — Thứ 7 (25/4)',
+  pickup_festival_sun: 'Liên hoan Yosakoi — Chủ nhật (26/4)',
+  ship_after_27apr:    'Giao hàng sau 27/4',
+};
+
+const payBadge: Record<string, string> = {
+  awaiting: '⏳ Chờ xác nhận CK',
+  verified: '✅ Đã xác nhận',
+  refunded: '↩️ Hoàn tiền',
+};
+
+const ordBadge: Record<string, string> = {
+  pending:   '📋 Chờ xử lý',
+  confirmed: '✓ Đã xác nhận',
+  done:      '🎉 Hoàn thành',
+  cancelled: '✕ Đã huỷ',
+};
+
+function qrUrl(order: Order) {
+  const addInfo = encodeURIComponent(`${order.id} ${order.phone}`);
+  const accountName = encodeURIComponent('Vu Khanh Chi');
+  return `https://img.vietqr.io/image/TCB-19040070626015-compact2.png?amount=${order.total}&addInfo=${addInfo}&accountName=${accountName}`;
+}
+---
+
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tra cứu đơn hàng — SIE Yosakoi Shop</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <style>.site-header { top: 0; }</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container" style="max-width:900px">
+    <a href="/" class="site-logo">🎏 SIE Yosakoi Shop</a>
+    <a href="/" class="btn btn-outline" style="font-size:0.875rem;min-height:36px;padding:6px 14px">← Về trang chủ</a>
+  </div>
+</header>
+
+<main>
+  <div class="container" style="max-width:680px;padding-top:2rem;padding-bottom:4rem">
+    <h1 style="font-family:var(--font-display);font-size:1.5rem;color:var(--navy-deep);margin-bottom:0.5rem">
+      Tra cứu đơn hàng
+    </h1>
+    <p style="color:var(--slate);margin-bottom:1.5rem;font-size:0.9rem">
+      Nhập số điện thoại đã dùng khi đặt hàng để xem trạng thái đơn.
+    </p>
+
+    <!-- Search form -->
+    <form method="GET" action="/orders" style="display:flex;gap:8px;margin-bottom:2rem">
+      <input
+        class="form-input"
+        type="tel"
+        name="phone"
+        value={phoneParam}
+        placeholder="Số điện thoại (VD: 0912345678)"
+        pattern="[0-9+\s\-]{9,15}"
+        required
+        style="flex:1"
+        autocomplete="tel"
+      />
+      <button type="submit" class="btn btn-koi" style="white-space:nowrap">Tra cứu →</button>
+    </form>
+
+    <!-- Results -->
+    {searched && orders.length === 0 && (
+      <div class="form-card" style="text-align:center;padding:2rem">
+        <div style="font-size:2rem;margin-bottom:0.5rem">🔍</div>
+        <p style="color:var(--slate)">Không tìm thấy đơn hàng nào với số điện thoại <strong>{phoneParam}</strong>.</p>
+        <p style="font-size:0.85rem;color:var(--mist);margin-top:0.5rem">
+          Kiểm tra lại số điện thoại hoặc liên hệ
+          <a href="https://www.facebook.com/sieyosakoiteam" target="_blank" rel="noopener" style="color:var(--koi-teal)">facebook.com/sieyosakoiteam</a>
+          để được hỗ trợ.
+        </p>
+      </div>
+    )}
+
+    {orders.length > 0 && (
+      <div>
+        <p style="font-size:0.85rem;color:var(--slate);margin-bottom:1rem">
+          Tìm thấy <strong>{orders.length}</strong> đơn hàng
+        </p>
+
+        <div style="display:flex;flex-direction:column;gap:12px">
+          {orders.map((order, idx) => (
+            <details class="form-card" style="padding:0" open={idx === 0}>
+              <!-- Accordion header -->
+              <summary style="
+                list-style:none;
+                padding:14px 16px;
+                cursor:pointer;
+                display:flex;
+                align-items:center;
+                justify-content:space-between;
+                gap:12px;
+                user-select:none;
+              ">
+                <div style="display:flex;flex-direction:column;gap:4px;min-width:0">
+                  <span style="font-family:monospace;font-weight:700;color:var(--navy-deep);font-size:0.95rem">
+                    {order.id}
+                  </span>
+                  <div style="display:flex;flex-wrap:wrap;gap:6px;font-size:0.75rem">
+                    <span style="background:var(--bg-offwhite);padding:2px 8px;border-radius:99px;color:var(--slate)">
+                      {ordBadge[order.order_status] ?? order.order_status}
+                    </span>
+                    <span style={`background:var(--bg-offwhite);padding:2px 8px;border-radius:99px;color:${order.payment_status === 'verified' ? 'var(--success)' : 'var(--koi-red)'}`}>
+                      {payBadge[order.payment_status] ?? order.payment_status}
+                    </span>
+                  </div>
+                </div>
+                <div style="text-align:right;flex-shrink:0">
+                  <div style="font-weight:700;color:var(--koi-red)">{fmtVnd(order.total)}</div>
+                  <div style="font-size:0.75rem;color:var(--mist)">{fmtDate(order.created_at)}</div>
+                </div>
+              </summary>
+
+              <!-- Accordion body -->
+              <div style="padding:0 16px 16px;border-top:1px dashed var(--border)">
+
+                <!-- Items list -->
+                <div style="margin-top:12px;display:flex;flex-direction:column;gap:6px">
+                  {order.items.map(item => (
+                    <div style="display:flex;justify-content:space-between;font-size:0.875rem">
+                      <div>
+                        <span style="font-weight:600">{item.name}</span>
+                        {item.color && <span style="color:var(--slate)"> · {item.color}</span>}
+                        {item.size && <span style="color:var(--slate)"> · {item.size}</span>}
+                        <span style="color:var(--slate)"> × {item.qty}</span>
+                      </div>
+                      <div style="font-weight:600;white-space:nowrap;margin-left:12px">
+                        {fmtVnd(item.unit_price * item.qty)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <hr style="border:none;border-top:1px dashed var(--border);margin:10px 0" />
+
+                <!-- Totals -->
+                <div style="font-size:0.85rem;color:var(--slate);text-align:right">
+                  Tạm tính: {fmtVnd(order.subtotal)}
+                  {order.shipping_fee > 0 && ` · Ship: ${fmtVnd(order.shipping_fee)}`}
+                </div>
+                <div style="font-weight:700;color:var(--koi-red);text-align:right;margin-top:2px">
+                  Tổng: {fmtVnd(order.total)}
+                </div>
+
+                <!-- Delivery info -->
+                <div style="margin-top:10px;font-size:0.85rem">
+                  {(order.delivery_method === 'pickup_festival_sat' || order.delivery_method === 'pickup_festival_sun') ? (
+                    <div>
+                      <div style="font-weight:600;color:var(--charcoal)">Nhận hàng trực tiếp tại Liên hoan Yosakoi Việt Nam 2026</div>
+                      <div style="color:var(--slate);margin-top:2px">📍 TTTM Aeon Mall Hà Đông</div>
+                      <div style="color:var(--slate);margin-top:2px">
+                        {order.delivery_method === 'pickup_festival_sat' ? 'Thứ 7, 25/4/2026' : 'Chủ nhật, 26/4/2026'}
+                      </div>
+                    </div>
+                  ) : order.delivery_method === 'ship_after_27apr' ? (
+                    <div>
+                      <div style="font-weight:600;color:var(--charcoal)">Nhận hàng qua chuyển phát toàn quốc sau ngày 27/4/2026</div>
+                      {order.address && <div style="color:var(--slate);margin-top:2px">📦 {order.address}</div>}
+                    </div>
+                  ) : (
+                    <div style="color:var(--slate)">🚚 {deliveryLabels[order.delivery_method] ?? order.delivery_method}</div>
+                  )}
+                </div>
+
+                <!-- Payment block -->
+                {order.payment_status === 'awaiting' ? (
+                  <div style="
+                    margin-top:14px;
+                    background:var(--bg-offwhite);
+                    border:1px solid var(--border);
+                    border-radius:var(--radius);
+                    padding:14px;
+                  ">
+                    <div style="font-weight:700;color:var(--navy-deep);margin-bottom:10px;font-size:0.9rem">
+                      💳 Chuyển khoản để xác nhận đơn
+                    </div>
+
+                    <div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap">
+                      <!-- QR code -->
+                      <div style="text-align:center;flex-shrink:0">
+                        <img
+                          src={qrUrl(order)}
+                          alt="VietQR chuyển khoản"
+                          width="160"
+                          loading="lazy"
+                          style="border-radius:8px"
+                        />
+                        <div style="font-size:0.72rem;color:var(--mist);margin-top:4px">Quét bằng app ngân hàng</div>
+                      </div>
+
+                      <!-- Bank details -->
+                      <div style="flex:1;min-width:180px;font-size:0.85rem">
+                        <div style="margin-bottom:6px"><span style="color:var(--slate)">Ngân hàng:</span> <strong>Techcombank (TCB)</strong></div>
+                        <div style="margin-bottom:6px"><span style="color:var(--slate)">STK:</span> <strong>19040070626015</strong></div>
+                        <div style="margin-bottom:6px"><span style="color:var(--slate)">Chủ TK:</span> <strong>Vũ Khánh Chi</strong></div>
+                        <div style="margin-bottom:6px"><span style="color:var(--slate)">Số tiền:</span> <strong style="color:var(--koi-red)">{fmtVnd(order.total)}</strong></div>
+                        <div><span style="color:var(--slate)">Nội dung:</span> <strong>{order.id} {order.phone}</strong></div>
+                      </div>
+                    </div>
+
+                    <!-- Notes -->
+                    <div style="
+                      margin-top:12px;
+                      padding:10px 12px;
+                      background:#fff;
+                      border-radius:var(--radius-sm);
+                      font-size:0.82rem;
+                      color:var(--slate);
+                      border-left:3px solid var(--koi-teal);
+                    ">
+                      ⏱ Chúng mình sẽ xác nhận chuyển khoản trong <strong>1–2 ngày</strong>.
+                    </div>
+
+                    <div style="
+                      margin-top:8px;
+                      padding:10px 12px;
+                      background:#fff;
+                      border-radius:var(--radius-sm);
+                      font-size:0.82rem;
+                      color:var(--slate);
+                    ">
+                      Đã chuyển khoản mà chưa được xác nhận? Liên hệ 👉
+                      <a
+                        href="https://www.facebook.com/sieyosakoiteam"
+                        target="_blank"
+                        rel="noopener"
+                        style="color:var(--koi-teal);font-weight:600"
+                      >facebook.com/sieyosakoiteam</a>
+                    </div>
+                  </div>
+                ) : order.payment_status === 'verified' ? (
+                  <div style="
+                    margin-top:14px;
+                    padding:10px 14px;
+                    background:#f0faf4;
+                    border-radius:var(--radius-sm);
+                    font-size:0.875rem;
+                    color:var(--success);
+                    font-weight:600;
+                  ">
+                    ✅ Đã xác nhận thanh toán
+                  </div>
+                ) : null}
+
+              </div>
+            </details>
+          ))}
+        </div>
+      </div>
+    )}
+  </div>
+</main>
+
+<footer style="text-align:center;padding:2rem 1rem;background:var(--navy-deep);color:rgba(255,255,255,0.6);font-size:0.8rem;margin-top:3rem">
+  © 2026 SIE Yosakoi Team
+</footer>
+
+</body>
+</html>
