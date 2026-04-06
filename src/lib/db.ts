@@ -1,7 +1,7 @@
 // D1 query helpers — raw SQL, no ORM
 import type {
   Batch, Product, Order, OrderItem, OrderFilters,
-  CreateOrderInput, DashboardStats
+  CreateOrderInput, DashboardStats, SalesSummaryRow
 } from '../types';
 
 // ── Batch helpers ──────────────────────────────────────────────────────────
@@ -95,12 +95,13 @@ export async function createOrder(db: D1Database, data: CreateOrderInput): Promi
   await db.prepare(`UPDATE order_sequence SET next_seq = next_seq + 1 WHERE batch_id = ?`).bind(data.batch_id).run();
   const orderId = `SIE-2026-${String(seq).padStart(4, '0')}`;
   await db.prepare(`
-    INSERT INTO orders (id, batch_id, customer_name, phone, delivery_method, address, items, subtotal, shipping_fee, total, notes)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO orders (id, batch_id, customer_name, phone, delivery_method, address, items, subtotal, shipping_fee, total, notes, email, facebook_url)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     orderId, data.batch_id, data.customer_name, data.phone,
     data.delivery_method, data.address,
-    JSON.stringify(data.items), data.subtotal, data.shipping_fee, data.total, data.notes
+    JSON.stringify(data.items), data.subtotal, data.shipping_fee, data.total, data.notes,
+    data.email, data.facebook_url
   ).run();
   return orderId;
 }
@@ -124,6 +125,14 @@ export async function getOrdersByBatch(db: D1Database, filters: OrderFilters): P
   const { results } = await db
     .prepare(`SELECT * FROM orders WHERE ${conditions.join(' AND ')} ORDER BY created_at DESC LIMIT ? OFFSET ?`)
     .bind(...vals)
+    .all<Record<string, unknown>>();
+  return results.map(parseOrder);
+}
+
+export async function getOrdersByPhone(db: D1Database, phone: string): Promise<Order[]> {
+  const { results } = await db
+    .prepare(`SELECT * FROM orders WHERE phone = ? ORDER BY created_at DESC`)
+    .bind(phone)
     .all<Record<string, unknown>>();
   return results.map(parseOrder);
 }
@@ -161,6 +170,28 @@ export async function getDashboardStats(db: D1Database, batchId: string): Promis
     total_revenue: revenue?.s ?? 0,
     pending_revenue: pendingRev?.s ?? 0,
   };
+}
+
+// Aggregate verified-order items by product/color/size for producer export
+export async function getSalesSummary(db: D1Database, batchId: string): Promise<SalesSummaryRow[]> {
+  const { results } = await db
+    .prepare(`SELECT items FROM orders WHERE batch_id = ? AND payment_status = 'verified'`)
+    .bind(batchId)
+    .all<{ items: string }>();
+  const map = new Map<string, SalesSummaryRow>();
+  for (const row of results) {
+    const items: OrderItem[] = JSON.parse(row.items || '[]');
+    for (const item of items) {
+      const key = `${item.name}|${item.color ?? ''}|${item.size ?? ''}`;
+      const existing = map.get(key);
+      if (existing) {
+        existing.total_qty += item.qty;
+      } else {
+        map.set(key, { product_name: item.name, color: item.color ?? null, size: item.size ?? null, total_qty: item.qty });
+      }
+    }
+  }
+  return Array.from(map.values()).sort((a, b) => a.product_name.localeCompare(b.product_name, 'vi'));
 }
 
 export async function getOrderCountByBatch(db: D1Database, batchId: string): Promise<number> {

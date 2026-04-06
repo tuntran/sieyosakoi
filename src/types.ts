@@ -67,6 +67,8 @@ export interface Order {
   shipping_fee: number;
   total: number;
   notes: string | null;
+  email: string | null;
+  facebook_url: string | null;
   order_status: OrderStatus;
   payment_status: PaymentStatus;
   created_at: number;
@@ -91,6 +93,15 @@ export interface CreateOrderInput {
   shipping_fee: number;
   total: number;
   notes: string | null;
+  email: string;
+  facebook_url: string | null;
+}
+
+export interface SalesSummaryRow {
+  product_name: string;
+  color: string | null;
+  size: string | null;
+  total_qty: number;
 }
 
 export interface OrderFilters {

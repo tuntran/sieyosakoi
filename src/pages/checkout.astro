@@ -20,14 +20,24 @@ if (Astro.request.method === 'POST') {
   const address = form.get('address')?.toString().trim() || null;
   const notes = form.get('notes')?.toString().trim() || null;
   const rawFbUrl = form.get('facebook_url')?.toString().trim() || null;
-  // Only accept valid http/https URLs, max 200 chars
-  const facebook_url = rawFbUrl && /^https?:\/\/.{3,}/.test(rawFbUrl) ? rawFbUrl.slice(0, 200) : null;
+  const rawEmail = form.get('email')?.toString().trim() ?? '';
   const itemsJson = form.get('items')?.toString() ?? '';
 
-  // Validate required fields
-  if (!customer_name || !phone || !delivery_method || !itemsJson || !facebook_url) {
+  // Validate required fields (email required, facebook optional)
+  if (!customer_name || !phone || !delivery_method || !itemsJson || !rawEmail) {
     return Astro.redirect('/checkout?error=missing');
   }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(rawEmail)) {
+    return Astro.redirect('/checkout?error=email');
+  }
+  // facebook_url: if provided, must be valid http/https URL
+  const facebook_url = rawFbUrl
+    ? (/^https?:\/\/.{3,}/.test(rawFbUrl) ? rawFbUrl.slice(0, 200) : null)
+    : null;
+  if (rawFbUrl && !facebook_url) {
+    return Astro.redirect('/checkout?error=fb_url');
+  }
+  const email = rawEmail.slice(0, 200);
   if (delivery_method === 'ship_after_27apr' && !address) {
     return Astro.redirect('/checkout?error=address');
   }
@@ -69,6 +79,7 @@ if (Astro.request.method === 'POST') {
     shipping_fee,
     total,
     notes: safeNotes,
+    email,
     facebook_url,
   });
 
@@ -81,6 +92,8 @@ const batchOpen = batch ? isBatchOpen(batch) : false;
 const errorParam = Astro.url.searchParams.get('error');
 const errorMessages: Record<string, string> = {
   missing: 'Vui lòng điền đầy đủ thông tin bắt buộc.',
+  email: 'Email không hợp lệ. Vui lòng kiểm tra lại.',
+  fb_url: 'Link Facebook không hợp lệ. Phải bắt đầu bằng https://.',
   address: 'Vui lòng nhập địa chỉ nhận hàng.',
   invalid: 'Giỏ hàng không hợp lệ. Vui lòng thử lại.',
   empty: 'Không có sản phẩm hợp lệ trong giỏ hàng.',
@@ -142,9 +155,14 @@ const errorMessages: Record<string, string> = {
                 <input class="form-input" type="tel" id="phone" name="phone" required placeholder="0912 345 678" autocomplete="tel" pattern="[0-9+\s\-]{9,15}" />
               </div>
 
+              <div class="form-group">
+                <label class="form-label" for="email">Email <span class="required">*</span></label>
+                <input class="form-input" type="email" id="email" name="email" required placeholder="example@email.com" autocomplete="email" />
+              </div>
+
               <div class="form-group" style="margin-bottom:0">
-                <label class="form-label" for="facebook_url">Link Facebook <span class="required">*</span></label>
-                <input class="form-input" type="url" id="facebook_url" name="facebook_url" required placeholder="https://facebook.com/ten.cua.ban" autocomplete="url" />
+                <label class="form-label" for="facebook_url">Link Facebook <span style="color:var(--mist);font-size:0.8rem">(không bắt buộc)</span></label>
+                <input class="form-input" type="url" id="facebook_url" name="facebook_url" placeholder="https://facebook.com/ten.cua.ban" autocomplete="url" />
               </div>
             </div>
 

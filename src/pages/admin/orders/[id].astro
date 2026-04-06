@@ -101,6 +101,19 @@ const ordLabels: Record<string, string> = { pending: 'Chờ xử lý', confirmed
               <span class="order-info-value" style="font-style:italic;color:var(--text-muted)">{order.notes}</span>
             </div>
           )}
+          {order.email && (
+            <div class="order-info-item">
+              <span class="order-info-label">Email</span>
+              <span class="order-info-value">{order.email}</span>
+            </div>
+          )}
+          {order.facebook_url && (
+            <div class="order-info-item" style="grid-column:1/-1">
+              <span class="order-info-label">Facebook</span>
+              <a href={order.facebook_url} target="_blank" rel="noopener noreferrer"
+                class="order-info-value" style="word-break:break-all">{order.facebook_url}</a>
+            </div>
+          )}
         </div>
 
         <!-- Items -->
