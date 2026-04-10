@@ -13,5 +13,12 @@ export const onRequest = defineMiddleware(async (context, next) => {
     if (!valid) return context.redirect('/admin/login');
   }
 
-  return next();
+  const response = await next();
+
+  // Prevent caching on all admin pages so data is always fresh
+  if (pathname.startsWith('/admin')) {
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+  }
+
+  return response;
 });
