@@ -120,8 +120,8 @@ export async function getOrdersByBatch(db: D1Database, filters: OrderFilters): P
   if (filters.batch_id)       { conditions.push('batch_id = ?');       vals.push(filters.batch_id); }
   if (filters.order_status)   { conditions.push('order_status = ?');   vals.push(filters.order_status); }
   if (filters.payment_status) { conditions.push('payment_status = ?'); vals.push(filters.payment_status); }
-  const offset = ((filters.page ?? 1) - 1) * 20;
-  vals.push(20, offset);
+  const offset = ((filters.page ?? 1) - 1) * 1000;
+  vals.push(1000, offset);
   const { results } = await db
     .prepare(`SELECT * FROM orders WHERE ${conditions.join(' AND ')} ORDER BY created_at DESC LIMIT ? OFFSET ?`)
     .bind(...vals)
