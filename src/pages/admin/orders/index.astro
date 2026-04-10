@@ -173,27 +173,61 @@ const orderLabels: Record<string, string> = { pending: 'Chờ xử lý', confirm
   <script type="application/json" id="orders-data" set:html={JSON.stringify(orders.map(o => ({
     id: o.id,
     customer: o.customer_name,
+    phone: o.phone,
+    email: o.email ?? '',
+    facebook: o.facebook_url ?? '',
+    delivery: o.delivery_method,
+    address: o.address ?? '',
+    notes: o.notes ?? '',
+    order_status: o.order_status,
+    payment_status: o.payment_status,
     items: o.items,
+    subtotal: o.subtotal,
+    shipping_fee: o.shipping_fee,
     total: o.total,
+    created_at: o.created_at,
   })))}></script>
   <script>
     const btnOrders = document.getElementById('btn-csv-orders');
     if (btnOrders) {
+      const deliveryMap = {
+        pickup_practice: 'Buổi tập', pickup_festival_sat: 'LH Thứ 7',
+        pickup_festival_sun: 'LH CN', ship_after_27apr: 'Giao hàng',
+      };
+      const paymentMap = { awaiting: 'Chờ CK', verified: 'Đã CK', refunded: 'Hoàn tiền' };
+      const orderMap = { pending: 'Chờ xử lý', confirmed: 'Xác nhận', done: 'Xong', cancelled: 'Huỷ' };
+      const fmtDate = (ts) => {
+        if (!ts) return '';
+        return new Date(ts * 1000).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
+      };
+
       btnOrders.addEventListener('click', () => {
         const orders = JSON.parse(document.getElementById('orders-data').textContent);
-        const headers = ['Mã đơn','Khách hàng','Sản phẩm','Màu','Size','Số lượng','Đơn giá','Thành tiền'];
+        const headers = ['Mã đơn','Khách hàng','SĐT','Email','Facebook','Nhận hàng','Địa chỉ','Ghi chú','Trạng thái đơn','Thanh toán','Sản phẩm','Màu','Size','Số lượng','Đơn giá','Thành tiền','Phí ship','Tạm tính','Tổng tiền','Ngày đặt'];
         let csv = '\uFEFF' + headers.join(',') + '\n';
         for (const o of orders) {
           for (const item of o.items) {
             const row = [
               o.id,
               o.customer,
+              o.phone,
+              o.email,
+              o.facebook,
+              deliveryMap[o.delivery] ?? o.delivery,
+              o.address,
+              o.notes,
+              orderMap[o.order_status] ?? o.order_status,
+              paymentMap[o.payment_status] ?? o.payment_status,
               item.name,
               item.color ?? '',
               item.size ?? '',
               item.qty,
               item.unit_price,
               item.qty * item.unit_price,
+              o.shipping_fee,
+              o.subtotal,
+              o.total,
+              fmtDate(o.created_at),
             ].map(v => `"${String(v).replace(/"/g, '""')}"`);
             csv += row.join(',') + '\n';
           }
