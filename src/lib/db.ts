@@ -172,22 +172,29 @@ export async function getDashboardStats(db: D1Database, batchId: string): Promis
   };
 }
 
-// Aggregate verified-order items by product/color/size for producer export
+// Aggregate order items by product/color/size with breakdown by status
 export async function getSalesSummary(db: D1Database, batchId: string): Promise<SalesSummaryRow[]> {
   const { results } = await db
-    .prepare(`SELECT items FROM orders WHERE batch_id = ? AND payment_status = 'verified'`)
+    .prepare(`SELECT items, payment_status, order_status FROM orders WHERE batch_id = ?`)
     .bind(batchId)
-    .all<{ items: string }>();
+    .all<{ items: string; payment_status: string; order_status: string }>();
   const map = new Map<string, SalesSummaryRow>();
   for (const row of results) {
     const items: OrderItem[] = JSON.parse(row.items || '[]');
+    const isCancelled = row.order_status === 'cancelled';
     for (const item of items) {
       const key = `${item.name}|${item.color ?? ''}|${item.size ?? ''}`;
-      const existing = map.get(key);
-      if (existing) {
-        existing.total_qty += item.qty;
+      let entry = map.get(key);
+      if (!entry) {
+        entry = { product_name: item.name, color: item.color ?? null, size: item.size ?? null, total_qty: 0, verified_qty: 0, awaiting_qty: 0, cancelled_qty: 0 };
+        map.set(key, entry);
+      }
+      if (isCancelled) {
+        entry.cancelled_qty += item.qty;
       } else {
-        map.set(key, { product_name: item.name, color: item.color ?? null, size: item.size ?? null, total_qty: item.qty });
+        entry.total_qty += item.qty;
+        if (row.payment_status === 'verified') entry.verified_qty += item.qty;
+        else if (row.payment_status === 'awaiting') entry.awaiting_qty += item.qty;
       }
     }
   }

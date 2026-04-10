@@ -102,6 +102,9 @@ export interface SalesSummaryRow {
   color: string | null;
   size: string | null;
   total_qty: number;
+  verified_qty: number;
+  awaiting_qty: number;
+  cancelled_qty: number;
 }
 
 export interface OrderFilters {
