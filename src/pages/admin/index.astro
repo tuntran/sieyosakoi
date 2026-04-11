@@ -2,6 +2,7 @@
 import { env } from 'cloudflare:workers';
 import AdminLayout from '../../layouts/AdminLayout.astro';
 import { getOpenBatch, getDashboardStats, getRecentOrders, getPaymentStatusBreakdown, getOrderStatusBreakdown, getSalesSummary } from '../../lib/db';
+import type { SalesSummaryRow } from '../../types';
 
 const db = env.DB;
 const batch = await getOpenBatch(db);
@@ -11,6 +12,7 @@ let recentOrders: Awaited<ReturnType<typeof getRecentOrders>> = [];
 let paymentBreakdown: Record<string, number> = {};
 let orderBreakdown: Record<string, number> = {};
 let topProducts: { name: string; verified: number; awaiting: number; cancelled: number }[] = [];
+let salesRows: SalesSummaryRow[] = [];
 
 if (batch) {
   const [s, ro, pb, ob, ss] = await Promise.all([
@@ -24,6 +26,8 @@ if (batch) {
   recentOrders = ro;
   paymentBreakdown = pb;
   orderBreakdown = ob;
+
+  salesRows = ss;
 
   // Aggregate sales by product name, take top 10
   const productMap: Record<string, { verified: number; awaiting: number; cancelled: number }> = {};
@@ -44,6 +48,13 @@ if (batch) {
 function fmtVnd(n: number) { return n.toLocaleString('vi-VN') + 'đ'; }
 function fmtDate(ts: number) {
   return new Date(ts * 1000).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
+}
+
+function buildVariantName(row: { product_name: string; color: string | null; size: string | null }): string {
+  let n = row.product_name;
+  if (row.color) n += ` - ${row.color}`;
+  if (row.size) n += ` - ${row.size}`;
+  return n;
 }
 
 const paymentLabels: Record<string, string> = { awaiting: 'Chờ CK', verified: 'Đã CK', refunded: 'Hoàn tiền' };
@@ -133,6 +144,41 @@ const orderLabels: Record<string, string> = { pending: 'Chờ xử lý', confirm
         <div class="card-body">
           <div class="chart-canvas-wrap" style="max-height:120px"><canvas id="revenueChart"></canvas></div>
         </div>
+      </div>
+
+      <!-- Sales summary table -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">📦 Tổng hợp sản phẩm</span>
+        </div>
+        {salesRows.length === 0 ? (
+          <div class="card-body" style="color:var(--text-muted);font-size:0.875rem">Chưa có đơn hàng nào.</div>
+        ) : (
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Tên mẫu mã</th>
+                  <th style="text-align:right" title="Tổng trừ đơn huỷ">Tổng (trừ huỷ)</th>
+                  <th style="text-align:right">Đã TT</th>
+                  <th style="text-align:right">Chờ CK</th>
+                  <th style="text-align:right">Huỷ</th>
+                </tr>
+              </thead>
+              <tbody>
+                {salesRows.map(row => (
+                  <tr>
+                    <td>{buildVariantName(row)}</td>
+                    <td style="text-align:right;font-weight:700">{row.total_qty}</td>
+                    <td style="text-align:right">{row.verified_qty}</td>
+                    <td style="text-align:right">{row.awaiting_qty}</td>
+                    <td style="text-align:right;color:var(--text-muted)">{row.cancelled_qty}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       <!-- Recent orders -->
