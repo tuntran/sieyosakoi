@@ -41,6 +41,15 @@ const orderLabels: Record<string, string> = { pending: 'Chờ xử lý', confirm
 ---
 
 <AdminLayout title="Đơn hàng" currentPage="orders">
+  <!-- Search bar -->
+  <div class="search-bar" style="margin-bottom:8px">
+    <div style="position:relative;flex:1;max-width:400px">
+      <input type="text" id="order-search" class="form-input" placeholder="Tìm theo tên, SĐT, mã đơn..." style="width:100%;padding-right:32px" />
+      <button type="button" id="search-clear" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:1.1rem;display:none" aria-label="Xóa tìm kiếm">✕</button>
+    </div>
+    <span id="search-count" style="font-size:0.82rem;color:var(--text-muted);display:none"></span>
+  </div>
+
   <!-- Filter bar -->
   <form method="GET" action="/admin/orders">
     <div class="filter-bar">
@@ -237,6 +246,52 @@ const orderLabels: Record<string, string> = { pending: 'Chờ xử lý', confirm
         a.download = 'don-hang.csv';
         a.click();
       });
+    }
+  </script>
+
+  <!-- Client-side search filter for desktop table + mobile cards -->
+  <script>
+    {
+      const searchInput = document.getElementById('order-search');
+      const clearBtn = document.getElementById('search-clear');
+      const countEl = document.getElementById('search-count');
+      const tableRows = document.querySelectorAll('.data-table tbody tr');
+      const mobileCards = document.querySelectorAll('.order-card');
+
+      let debounceTimer;
+      searchInput?.addEventListener('input', () => {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(filterOrders, 300);
+      });
+      clearBtn?.addEventListener('click', () => {
+        if (searchInput) searchInput.value = '';
+        filterOrders();
+        searchInput?.focus();
+      });
+
+      function filterOrders() {
+        const keyword = searchInput?.value.toLowerCase().trim() || '';
+        clearBtn.style.display = keyword ? 'block' : 'none';
+        let visible = 0;
+        const total = tableRows.length;
+
+        tableRows.forEach((row, i) => {
+          const id = row.querySelector('td a')?.textContent?.toLowerCase() || '';
+          const name = row.querySelector('td:nth-child(2) div')?.textContent?.toLowerCase() || '';
+          const phone = row.querySelector('td:nth-child(2) div:last-child')?.textContent || '';
+          const match = !keyword || id.includes(keyword) || name.includes(keyword) || phone.includes(keyword);
+          row.style.display = match ? '' : 'none';
+          if (mobileCards[i]) mobileCards[i].style.display = match ? '' : 'none';
+          if (match) visible++;
+        });
+
+        if (keyword && countEl) {
+          countEl.style.display = 'inline';
+          countEl.textContent = `${visible}/${total} đơn`;
+        } else if (countEl) {
+          countEl.style.display = 'none';
+        }
+      }
     }
   </script>
 
