@@ -208,3 +208,25 @@ export async function getOrderCountByBatch(db: D1Database, batchId: string): Pro
     .first<{ c: number }>();
   return row?.c ?? 0;
 }
+
+// ── Chart data helpers ────────────────────────────────────────────────────
+
+export async function getPaymentStatusBreakdown(db: D1Database, batchId: string): Promise<Record<string, number>> {
+  const { results } = await db
+    .prepare(`SELECT payment_status, COUNT(*) as count FROM orders WHERE batch_id = ? GROUP BY payment_status`)
+    .bind(batchId)
+    .all<{ payment_status: string; count: number }>();
+  const map: Record<string, number> = {};
+  for (const r of results) map[r.payment_status] = r.count;
+  return map;
+}
+
+export async function getOrderStatusBreakdown(db: D1Database, batchId: string): Promise<Record<string, number>> {
+  const { results } = await db
+    .prepare(`SELECT order_status, COUNT(*) as count FROM orders WHERE batch_id = ? GROUP BY order_status`)
+    .bind(batchId)
+    .all<{ order_status: string; count: number }>();
+  const map: Record<string, number> = {};
+  for (const r of results) map[r.order_status] = r.count;
+  return map;
+}

@@ -1,12 +1,45 @@
 ---
 import { env } from 'cloudflare:workers';
 import AdminLayout from '../../layouts/AdminLayout.astro';
-import { getOpenBatch, getDashboardStats, getRecentOrders } from '../../lib/db';
+import { getOpenBatch, getDashboardStats, getRecentOrders, getPaymentStatusBreakdown, getOrderStatusBreakdown, getSalesSummary } from '../../lib/db';
 
 const db = env.DB;
 const batch = await getOpenBatch(db);
-const stats = batch ? await getDashboardStats(db, batch.id) : null;
-const recentOrders = batch ? await getRecentOrders(db, batch.id, 10) : [];
+
+let stats: Awaited<ReturnType<typeof getDashboardStats>> | null = null;
+let recentOrders: Awaited<ReturnType<typeof getRecentOrders>> = [];
+let paymentBreakdown: Record<string, number> = {};
+let orderBreakdown: Record<string, number> = {};
+let topProducts: { name: string; verified: number; awaiting: number; cancelled: number }[] = [];
+
+if (batch) {
+  const [s, ro, pb, ob, ss] = await Promise.all([
+    getDashboardStats(db, batch.id),
+    getRecentOrders(db, batch.id, 10),
+    getPaymentStatusBreakdown(db, batch.id),
+    getOrderStatusBreakdown(db, batch.id),
+    getSalesSummary(db, batch.id),
+  ]);
+  stats = s;
+  recentOrders = ro;
+  paymentBreakdown = pb;
+  orderBreakdown = ob;
+
+  // Aggregate sales by product name, take top 10
+  const productMap: Record<string, { verified: number; awaiting: number; cancelled: number }> = {};
+  for (const row of ss) {
+    if (!productMap[row.product_name]) {
+      productMap[row.product_name] = { verified: 0, awaiting: 0, cancelled: 0 };
+    }
+    productMap[row.product_name].verified += row.verified_qty;
+    productMap[row.product_name].awaiting += row.awaiting_qty;
+    productMap[row.product_name].cancelled += row.cancelled_qty;
+  }
+  topProducts = Object.entries(productMap)
+    .map(([name, d]) => ({ name, ...d }))
+    .sort((a, b) => (b.verified + b.awaiting) - (a.verified + a.awaiting))
+    .slice(0, 10);
+}
 
 function fmtVnd(n: number) { return n.toLocaleString('vi-VN') + 'đ'; }
 function fmtDate(ts: number) {
@@ -70,6 +103,38 @@ const orderLabels: Record<string, string> = { pending: 'Chờ xử lý', confirm
         </div>
       </div>
 
+      <!-- Charts -->
+      <div class="charts-grid">
+        <div class="chart-card">
+          <div class="chart-card-title">Thanh toán</div>
+          <div class="chart-canvas-wrap"><canvas id="paymentChart"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-card-title">Trạng thái đơn</div>
+          <div class="chart-canvas-wrap"><canvas id="orderChart"></canvas></div>
+        </div>
+      </div>
+
+      <!-- Top products -->
+      <div class="card" style="margin-bottom:20px">
+        <div class="card-header">
+          <span class="card-title">📊 Top sản phẩm bán chạy</span>
+        </div>
+        <div class="card-body">
+          <div class="chart-canvas-wrap" style="max-height:none"><canvas id="productsChart"></canvas></div>
+        </div>
+      </div>
+
+      <!-- Revenue breakdown -->
+      <div class="card" style="margin-bottom:20px">
+        <div class="card-header">
+          <span class="card-title">💰 Doanh thu</span>
+        </div>
+        <div class="card-body">
+          <div class="chart-canvas-wrap" style="max-height:120px"><canvas id="revenueChart"></canvas></div>
+        </div>
+      </div>
+
       <!-- Recent orders -->
       <div class="card">
         <div class="card-header">
@@ -113,3 +178,143 @@ const orderLabels: Record<string, string> = { pending: 'Chờ xử lý', confirm
     </>
   )}
 </AdminLayout>
+
+{batch && (
+  <script is:inline src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+  <script define:vars={{ paymentBreakdown, orderBreakdown, topProducts, stats }}>
+    document.addEventListener('DOMContentLoaded', () => {
+      const fontFamily = "'Noto Sans JP', system-ui, sans-serif";
+      Chart.defaults.font.family = fontFamily;
+      Chart.defaults.font.size = 12;
+
+      // ── Donut: Payment status ──
+      const paymentCtx = document.getElementById('paymentChart');
+      if (paymentCtx) {
+        new Chart(paymentCtx, {
+          type: 'doughnut',
+          data: {
+            labels: ['Chờ CK', 'Đã CK', 'Hoàn tiền'],
+            datasets: [{
+              data: [
+                paymentBreakdown.awaiting || 0,
+                paymentBreakdown.verified || 0,
+                paymentBreakdown.refunded || 0
+              ],
+              backgroundColor: ['#ef4444', '#14b8a6', '#6b7280'],
+              borderWidth: 2,
+              borderColor: '#fff'
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '60%',
+            plugins: {
+              legend: { position: 'bottom', labels: { padding: 16, usePointStyle: true, pointStyleWidth: 8 } }
+            }
+          }
+        });
+      }
+
+      // ── Donut: Order status ──
+      const orderCtx = document.getElementById('orderChart');
+      if (orderCtx) {
+        new Chart(orderCtx, {
+          type: 'doughnut',
+          data: {
+            labels: ['Chờ xử lý', 'Đã xác nhận', 'Hoàn thành', 'Đã huỷ'],
+            datasets: [{
+              data: [
+                orderBreakdown.pending || 0,
+                orderBreakdown.confirmed || 0,
+                orderBreakdown.done || 0,
+                orderBreakdown.cancelled || 0
+              ],
+              backgroundColor: ['#f59e0b', '#3b82f6', '#22c55e', '#6b7280'],
+              borderWidth: 2,
+              borderColor: '#fff'
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '60%',
+            plugins: {
+              legend: { position: 'bottom', labels: { padding: 16, usePointStyle: true, pointStyleWidth: 8 } }
+            }
+          }
+        });
+      }
+
+      // ── Horizontal Bar: Top products (pre-aggregated server-side) ──
+      const productsCtx = document.getElementById('productsChart');
+      if (productsCtx && topProducts.length > 0) {
+        const labels = topProducts.map(p => p.name.length > 25 ? p.name.slice(0, 25) + '…' : p.name);
+
+        new Chart(productsCtx, {
+          type: 'bar',
+          data: {
+            labels,
+            datasets: [
+              { label: 'Đã CK', data: topProducts.map(p => p.verified), backgroundColor: '#14b8a6' },
+              { label: 'Chờ CK', data: topProducts.map(p => p.awaiting), backgroundColor: '#f59e0b' },
+              { label: 'Đã huỷ', data: topProducts.map(p => p.cancelled), backgroundColor: '#d1d5db' }
+            ]
+          },
+          options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              x: { stacked: true, grid: { display: false }, ticks: { stepSize: 1 } },
+              y: { stacked: true, grid: { display: false } }
+            },
+            plugins: {
+              legend: { position: 'top', labels: { padding: 12, usePointStyle: true, pointStyleWidth: 8 } }
+            }
+          }
+        });
+        // Dynamic height based on product count
+        if (productsCtx.parentElement) {
+          productsCtx.parentElement.style.height = Math.max(200, topProducts.length * 36 + 60) + 'px';
+        }
+      }
+
+      // ── Revenue bar ──
+      const revenueCtx = document.getElementById('revenueChart');
+      if (revenueCtx && stats) {
+        new Chart(revenueCtx, {
+          type: 'bar',
+          data: {
+            labels: ['Doanh thu'],
+            datasets: [
+              { label: 'Đã CK', data: [stats.total_revenue], backgroundColor: '#14b8a6' },
+              { label: 'Chờ CK', data: [stats.pending_revenue], backgroundColor: '#f59e0b' }
+            ]
+          },
+          options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              x: {
+                stacked: true,
+                grid: { display: false },
+                ticks: { callback: function(v) { return (v / 1000).toLocaleString('vi-VN') + 'k'; } }
+              },
+              y: { stacked: true, display: false }
+            },
+            plugins: {
+              legend: { position: 'top', labels: { padding: 12, usePointStyle: true, pointStyleWidth: 8 } },
+              tooltip: {
+                callbacks: {
+                  label: function(ctx) { return ctx.dataset.label + ': ' + ctx.raw.toLocaleString('vi-VN') + 'đ'; }
+                }
+              }
+            }
+          }
+        });
+      }
+    });
+  </script>
+)}
